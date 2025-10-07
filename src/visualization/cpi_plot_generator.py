@@ -7,6 +7,7 @@ for CPI data visualization and comparison.
 
 import os
 import warnings
+from typing import Any
 
 import matplotlib.dates as mdates
 import matplotlib.pyplot as plt
@@ -18,6 +19,8 @@ import seaborn as sns
 from src.analysis.evaluation import compute_model_cv_metrics
 from src.core import utils
 from src.core.logutil import get_logger
+from src.models.model_samira import fit_samira_model
+from src.models import advanced_models
 
 logger = get_logger(__name__)
 
@@ -220,7 +223,7 @@ class CPIPlotGenerator:
         
         return self.cpi_series
     
-    def fit_model(self, model_name: str, test_size: int = 12, **kwargs) -> dict:
+    def fit_model(self, model_name: str, test_size: int = 12, **kwargs) -> dict[str, Any]:
         """
         Fit a specific forecasting model to the CPI data.
         
@@ -248,7 +251,6 @@ class CPIPlotGenerator:
             elif model_name == 'prophet':
                 return utils.fit_prophet_series(self.cpi_series, test_size=test_size, **kwargs)
             elif model_name == 'samira':
-                from src.models.model_samira import fit_samira_model
                 return fit_samira_model(self.cpi_series, test_size=test_size, **kwargs)
             elif model_name == 'croston':
                 return utils.fit_croston(self.cpi_series, test_size=test_size, **kwargs)
@@ -260,7 +262,6 @@ class CPIPlotGenerator:
                 return self._fit_drift_model(self.cpi_series, test_size=test_size)
             else:
                 # Try to use from advanced models
-                from src.models import advanced_models
                 if hasattr(advanced_models, f'fit_{model_name}_model'):
                     model_func = getattr(advanced_models, f'fit_{model_name}_model')
                     return model_func(self.cpi_series, test_size=test_size, **kwargs)
@@ -271,7 +272,7 @@ class CPIPlotGenerator:
             logger.error(f"Error fitting {model_name} model: {e}")
             return {'error': str(e), 'model': None, 'forecast': None}
     
-    def _fit_naive_model(self, series: pd.Series, test_size: int = 12) -> dict:
+    def _fit_naive_model(self, series: pd.Series, test_size: int = 12) -> dict[str, Any]:
         """Fit naive (last value) model."""
         train = series.iloc[:-test_size] if test_size > 0 else series
         last_value = train.iloc[-1]
@@ -298,7 +299,9 @@ class CPIPlotGenerator:
             'rmse': None
         }
     
-    def _fit_seasonal_naive_model(self, series: pd.Series, test_size: int = 12, season_length: int = 12) -> dict:
+    def _fit_seasonal_naive_model(
+        self, series: pd.Series, test_size: int = 12, season_length: int = 12
+    ) -> dict[str, Any]:
         """Fit seasonal naive model."""
         train = series.iloc[:-test_size] if test_size > 0 else series
         
@@ -335,7 +338,7 @@ class CPIPlotGenerator:
             'rmse': None
         }
     
-    def _fit_drift_model(self, series: pd.Series, test_size: int = 12) -> dict:
+    def _fit_drift_model(self, series: pd.Series, test_size: int = 12) -> dict[str, Any]:
         """Fit drift (linear trend) model."""
         train = series.iloc[:-test_size] if test_size > 0 else series
         
@@ -521,7 +524,7 @@ class CPIPlotGenerator:
         colors = plt.cm.tab10(np.linspace(0, 1, len(model_names)))
         metrics_data = []
         
-        for _, (model_name, color) in enumerate(zip(model_names, colors)):
+        for _, (model_name, color) in enumerate(zip(model_names, colors, strict=True)):
             result = results[model_name]
             
             if result.get('error'):
@@ -815,7 +818,7 @@ class CPIPlotGenerator:
             print(f"{i:2d}. {model_name.upper():<20} - {description}")
         print("=" * 60)
     
-    def run_interactive_mode(self):
+    def run_interactive_mode(self) -> None:
         """Run the plot generator in interactive mode."""
         print("\n🔮 Welcome to the CPI Forecasting Plot Generator!")
         print("=" * 60)
