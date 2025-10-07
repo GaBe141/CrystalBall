@@ -49,6 +49,7 @@ class CPIPlotGenerator:
         self.output_dir = output_dir
         self.data: pd.DataFrame | None = None
         self.cpi_series: pd.Series | None = None
+        self.cpi_series: pd.Series | None = None
         self.available_models = self._get_available_models()
         
         # Create output directory if it doesn't exist
@@ -195,7 +196,9 @@ class CPIPlotGenerator:
             name='CPI'
         ).dropna()
     
-    def _create_synthetic_cpi_data(self, n_periods: int = 120, start_date: str = '2015-01-01') -> pd.Series:
+    def _create_synthetic_cpi_data(
+        self, n_periods: int = 120, start_date: str = '2015-01-01'
+    ) -> pd.Series:
         """Create synthetic CPI data for demonstration purposes."""
         np.random.seed(42)
         
@@ -224,7 +227,7 @@ class CPIPlotGenerator:
         
         return self.cpi_series
     
-    def fit_model(self, model_name: str, test_size: int = 12, **kwargs) -> dict[str, Any]:
+    def fit_model(self, model_name: str, test_size: int = 12, **kwargs: Any) -> dict[str, Any]:
         """
         Fit a specific forecasting model to the CPI data.
         
@@ -240,7 +243,9 @@ class CPIPlotGenerator:
             raise ValueError("CPI data not loaded. Call load_cpi_data() first.")
         
         if model_name not in self.available_models:
-            raise ValueError(f"Model '{model_name}' not available. Choose from: {list(self.available_models.keys())}")
+            available_models = list(self.available_models.keys())
+            msg = f"Model '{model_name}' not available. Choose from: {available_models}"
+            raise ValueError(msg)
         
         logger.info(f"Fitting {model_name} model...")
         
@@ -381,7 +386,7 @@ class CPIPlotGenerator:
     
     def generate_single_model_plot(self, model_name: str, test_size: int = 12, 
                                  figsize: tuple[int, int] = (12, 8),
-                                 save_plot: bool = True, **kwargs) -> matplotlib.figure.Figure:
+                                 save_plot: bool = True, **kwargs: Any) -> matplotlib.figure.Figure:
         """
         Generate a plot for a single forecasting model.
         
@@ -485,7 +490,7 @@ class CPIPlotGenerator:
     
     def generate_comparison_plot(self, model_names: list[str], test_size: int = 12,
                                figsize: tuple[int, int] = (15, 10),
-                               save_plot: bool = True) -> plt.Figure:
+                               save_plot: bool = True) -> matplotlib.figure.Figure:
         """
         Generate a comparison plot for multiple forecasting models.
         
@@ -614,8 +619,8 @@ class CPIPlotGenerator:
         logger.info(f"Performing cross-validation with {cv_folds} folds...")
         
         # Define simple model functions for CV
-        def create_model_function(model_name):
-            def model_func(train_series, horizon):
+        def create_model_function(model_name: str) -> Any:
+            def model_func(train_series: pd.Series, horizon: int) -> list[float]:
                 try:
                     result = self.fit_model(model_name, test_size=0)
                     if result.get('forecast') is not None:
