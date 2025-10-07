@@ -16,9 +16,9 @@ import pandas as pd
 import seaborn as sns
 
 # Internal imports
-from ..analysis.evaluation import compute_model_cv_metrics
-from ..core import utils
-from ..core.logutil import get_logger
+from src.analysis.evaluation import compute_model_cv_metrics
+from src.core import utils
+from src.core.logutil import get_logger
 
 logger = get_logger(__name__)
 
@@ -208,7 +208,7 @@ class CPIPlotGenerator:
             elif model_name == 'prophet':
                 return utils.fit_prophet_series(self.cpi_series, test_size=test_size, **kwargs)
             elif model_name == 'samira':
-                from ..models.model_samira import fit_samira_model
+                from src.models.model_samira import fit_samira_model
                 return fit_samira_model(self.cpi_series, test_size=test_size, **kwargs)
             elif model_name == 'croston':
                 return utils.fit_croston(self.cpi_series, test_size=test_size, **kwargs)
