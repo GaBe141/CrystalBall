@@ -1,0 +1,198 @@
+"""Minimal CrystalBall orchestrator.
+
+This file is intentionally small and self-contained. It:
+- scans data/raw for CSV/XLSX files
+- detects a CPI-like numeric series
+- computes affinity for candidate regressors (via src.utils)
+- runs a handful of forecasting wrappers from src.utils
+- writes CSV summaries and PNG visualizations under data/processed
+
+This is a single, canonical implementation intended to replace previous
+corrupted/duplicated copies.
+"""
+
+from __future__ import annotations
+
+import logging
+import os
+from typing import Optional
+
+import pandas as pd
+import matplotlib.pyplot as plt
+
+from src import utils
+
+
+RAW_DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "raw")
+PROC_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "processed")
+VIS_DIR = os.path.join(PROC_DIR, "visualizations")
+
+logger = logging.getLogger("crystalball")
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+
+
+def analyze_file(path: str) -> None:
+    logger.info("Analyzing %s", path)
+
+    try:
+        df = utils.load_dataset(path)
+    except Exception:
+        logger.exception("Failed to load %s", path)
+        return
+
+    df = utils.clean_df(df)
+    time_col = utils.detect_time_column(df)
+    num_cols = df.select_dtypes(include="number").columns.tolist()
+    target_col = utils.detect_cpi_column(df) or (num_cols[0] if num_cols else None)
+    if not time_col or not target_col:
+        logger.info("Skipping %s: no time or numeric target", path)
+        return
+
+    # build series and candidate exogenous regressors
+    df[time_col] = pd.to_datetime(df[time_col], errors="coerce")
+    df = df.dropna(subset=[time_col, target_col])
+    df = df.sort_values(time_col)
+    df.set_index(time_col, inplace=True)
+    series = df[target_col].astype(float)
+    base_name = os.path.splitext(os.path.basename(path))[0]
+
+    candidates_df: Optional[pd.DataFrame] = None
+    try:
+        cand_cols = [c for c in num_cols if c != target_col]
+        if cand_cols:
+            cand_df = df[[c for c in cand_cols if c in df.columns]].dropna()
+            cand_df = cand_df.reindex(series.index).astype(float)
+            candidates_df = cand_df
+    except Exception:
+        logger.exception("Preparing candidate regressors failed")
+        candidates_df = None
+
+    os.makedirs(VIS_DIR, exist_ok=True)
+    os.makedirs(PROC_DIR, exist_ok=True)
+
+    exog_df = None
+    affinity_df = None
+    if candidates_df is not None and not candidates_df.empty:
+        try:
+            affinity_df = utils.compute_affinity(series, candidates_df)
+            affinity_csv = os.path.join(PROC_DIR, f"{base_name}_affinity.csv")
+            affinity_df.to_csv(affinity_csv, index=False)
+            logger.info("Affinity ranking saved: %s", affinity_csv)
+            top_feats = affinity_df["feature"].tolist()[:5]
+            exog_df = candidates_df[top_feats].copy() if top_feats else None
+        except Exception:
+            logger.exception("Affinity computation failed")
+
+    models = {}
+    test_size = max(1, int(len(series) * 0.2))
+
+    # statistical model wrappers
+    try:
+        models["arima"] = utils.fit_arima_series(series, test_size=test_size, auto_order=True, exog=exog_df)
+    except Exception:
+        logger.exception("ARIMA failed")
+
+    try:
+        models["ets"] = utils.fit_exponential_smoothing(series, test_size=test_size, trend="add")
+    except Exception:
+        logger.exception("ETS failed")
+
+    try:
+        models["theta"] = utils.fit_theta_method(series, test_size=test_size)
+    except Exception:
+        logger.exception("Theta failed")
+
+    try:
+        zeros_fraction = (series == 0).mean()
+        if zeros_fraction > 0.3:
+            models["croston"] = utils.fit_croston(series, n_forecast=10, test_size=test_size)
+    except Exception:
+        logger.exception("Croston failed")
+
+    # plotting
+    for name, res in models.items():
+        if not res or res.get("forecast") is None:
+            continue
+        f = res["forecast"]
+        plt.figure(figsize=(10, 5))
+        plt.plot(series.index, series.values, label="Actual")
+        if res.get("fitted") is not None:
+            try:
+                plt.plot(res["fitted"].index, res["fitted"].values, label=f"{name} fitted", linestyle="--")
+            except Exception:
+                pass
+        try:
+            # try to coerce forecast to a DatetimeIndex when possible
+            if isinstance(series.index, pd.DatetimeIndex) and not isinstance(f.index, pd.DatetimeIndex):
+                freq = pd.infer_freq(series.index)
+                if freq is not None:
+                    start = series.index[-1]
+                    future_index = pd.date_range(start=start + pd.tseries.frequencies.to_offset(freq), periods=len(f), freq=freq)
+                    f = pd.Series(f.values, index=future_index)
+        except Exception:
+            pass
+        try:
+            plt.plot(f.index, f.values, label=f"{name} forecast")
+        except Exception:
+            plt.plot(range(len(f)), f, label=f"{name} forecast")
+        plt.title(f"{base_name}: {target_col} - {name} forecast")
+        plt.legend()
+        plt.tight_layout()
+        plt.savefig(os.path.join(VIS_DIR, f"{base_name}_{target_col}_{name}_forecast.png"))
+        plt.close()
+
+    # optional wrappers
+    try:
+        sf_res = utils.fit_statsforecast_model(series, test_size=test_size, model_name="auto", exog=exog_df)
+        if isinstance(sf_res, dict) and sf_res.get("error") is None:
+            models["statsforecast"] = sf_res
+    except Exception:
+        logger.exception("statsforecast wrapper failed")
+
+    try:
+        ml_res = utils.fit_mlforecast_model(series, covariates=exog_df, lags=[1, 12], test_size=test_size)
+        if isinstance(ml_res, dict) and ml_res.get("error") is None:
+            models["mlforecast"] = ml_res
+    except Exception:
+        logger.exception("mlforecast wrapper failed")
+
+    # write summary
+    summary_rows = []
+    for name, res in models.items():
+        if not isinstance(res, dict):
+            continue
+        summary_rows.append(
+            {
+                "model": name,
+                "train_mae": res.get("train_mae"),
+                "train_rmse": res.get("train_rmse"),
+                "mae": res.get("mae"),
+                "rmse": res.get("rmse"),
+                "error": res.get("error"),
+            }
+        )
+
+    try:
+        summary_df = pd.DataFrame(summary_rows)
+        summary_csv = os.path.join(PROC_DIR, f"{base_name}_model_summary.csv")
+        summary_df.to_csv(summary_csv, index=False)
+        logger.info("Model summary saved: %s", summary_csv)
+    except Exception:
+        logger.exception("Failed to save model summary CSV")
+
+
+def main() -> None:
+    logger.info("CrystalBall data processing system started.")
+    if not os.path.isdir(RAW_DATA_DIR):
+        logger.warning("Raw data directory not found: %s", RAW_DATA_DIR)
+        return
+    files = [os.path.join(RAW_DATA_DIR, f) for f in os.listdir(RAW_DATA_DIR) if f.lower().endswith((".csv", ".xlsx"))]
+    if not files:
+        logger.info("No datasets found in data/raw.")
+        return
+    for file in files:
+        analyze_file(file)
+
+
+if __name__ == "__main__":
+    main()
