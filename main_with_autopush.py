@@ -9,7 +9,7 @@ import sys
 from pathlib import Path
 
 # Add src to path for imports
-sys.path.insert(0, str(Path(__file__).parent / "src"))
+sys.path.insert(0, str(Path(__file__).parent))
 
 from src.git_gateway import (
     start_auto_push_daemon,

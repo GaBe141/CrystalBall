@@ -3,11 +3,15 @@
 File watcher that triggers git pushes when files change during analysis runs.
 """
 import os
+import sys
 import time
 import threading
 from pathlib import Path
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
+
+# Add project root to path
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from src.git_gateway import push_on_data_change, push_on_results_generated, _gateway
 
