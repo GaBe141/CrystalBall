@@ -118,6 +118,26 @@ def build_executive_summary(processed_dir: str, exports_dir: str) -> Dict[str, s
             except Exception:
                 pass
 
+        # Extract robust flags from diagnostics if present
+        robust_flags: dict[str, float | int | bool | None] | None = None
+        diag_path = os.path.join(processed_dir, f"{base}_diagnostics.json")
+        if os.path.exists(diag_path):
+            try:
+                with open(diag_path, 'r', encoding='utf-8') as f:
+                    diag = json.load(f)
+                robust = diag.get('robust', {})
+                if robust and not robust.get('error'):
+                    robust_flags = {
+                        'non_stationary_adf': not robust.get('adf_stationary', True),
+                        'non_stationary_kpss': not robust.get('kpss_stationary', True),
+                        'serial_correlation': robust.get('ljungbox_pvalue', 1.0) < 0.05 if robust.get('ljungbox_pvalue') is not None else None,
+                        'outlier_fraction': robust.get('stl_outlier_frac'),
+                        'has_structural_breaks': (robust.get('break_count') or 0) > 0,
+                        'break_count': robust.get('break_count'),
+                    }
+            except Exception:
+                pass
+
         series_summaries.append(
             SeriesSummary(
                 base_name=base,
@@ -125,6 +145,7 @@ def build_executive_summary(processed_dir: str, exports_dir: str) -> Dict[str, s
                 top_model=top,
                 artifacts=ReportArtifacts(visuals=visuals, exports=exports),
                 llm_top3=llm_top3,
+                robust_flags=robust_flags,
             )
         )
 
@@ -162,6 +183,18 @@ def build_executive_summary(processed_dir: str, exports_dir: str) -> Dict[str, s
                 for item in s.llm_top3:
                     conf = f", conf={item.confidence:.2f}" if item.confidence is not None else ""
                     f.write(f"  - #{item.consensus_rank}: {item.model} (score={item.consensus_score:.3f}, votes={item.votes}{conf})\n")
+            if s.robust_flags:
+                f.write('- Robust flags:\n')
+                flags = s.robust_flags
+                if flags.get('non_stationary_adf') or flags.get('non_stationary_kpss'):
+                    f.write('  - Non-stationary series detected\n')
+                if flags.get('serial_correlation'):
+                    f.write('  - Serial correlation present\n')
+                if flags.get('outlier_fraction') and flags['outlier_fraction'] > 0.1:
+                    f.write(f"  - High outlier fraction: {flags['outlier_fraction']:.2f}\n")
+                if flags.get('has_structural_breaks'):
+                    bc = flags.get('break_count', 0)
+                    f.write(f"  - Structural breaks detected: {bc}\n")
             if s.artifacts.visuals:
                 f.write(f'- Visuals: {len(s.artifacts.visuals)}\n')
             if s.artifacts.exports:

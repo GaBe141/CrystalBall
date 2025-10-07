@@ -1,5 +1,38 @@
+"""Utility functions for CrystalBall data processing.
+
+This module provides small, testable helpers for loading and cleaning
+datasets, detecting time/CPI-like columns, and summarizing statistics.
+Keep these functions pure where possible so they're easy to unit-test.
+"""
+
+import os
+from typing import Any, Dict, List, Optional
+
+import numpy as np
+import pandas as pd
+from statsmodels.tsa.arima.model import ARIMA
+from statsmodels.tsa.holtwinters import ExponentialSmoothing, SimpleExpSmoothing
+
+
 # --- Bulk CSV Loader and Cleaner ---
 import glob
+
+
+def read_csv_optimized(path: str, time_col: Optional[str] = None) -> pd.DataFrame:
+    """Reads a CSV with memory optimization by downcasting numeric types
+    and converting low-cardinality string columns to 'category' dtype.
+    """
+    df = pd.read_csv(path, low_memory=False, parse_dates=[time_col] if time_col else None)
+    # Downcast numeric types to save memory
+    for col in df.select_dtypes(include=["float64"]).columns:
+        df[col] = pd.to_numeric(df[col], downcast="float")
+    for col in df.select_dtypes(include=["int64"]).columns:
+        df[col] = pd.to_numeric(df[col], downcast="integer")
+    # Heuristic: if unique values are less than 50% of total, categorize
+    for col in df.select_dtypes(include=["object"]).columns:
+        if df[col].nunique() / len(df[col]) < 0.5:
+            df[col] = df[col].astype("category")
+    return df
 
 
 def bulk_load_and_clean_raw_csv(raw_dir, processed_dir, logger=None):
@@ -8,9 +41,11 @@ def bulk_load_and_clean_raw_csv(raw_dir, processed_dir, logger=None):
     for fpath in csv_files:
         fname = os.path.basename(fpath)
         try:
-            df = pd.read_csv(fpath, encoding='utf-8', engine='python')
+            # Use the new optimized reader
+            df = read_csv_optimized(fpath)
         except Exception:
             try:
+                # Fallback for encoding issues
                 df = pd.read_csv(fpath, encoding='latin1', engine='python')
             except Exception as e:
                 if logger: logger.error(f"Failed to load {fname}: {e}")
@@ -41,20 +76,6 @@ def bulk_load_and_clean_raw_csv(raw_dir, processed_dir, logger=None):
             'shape': df.shape
         })
     return summary
-"""Utility functions for CrystalBall data processing.
-
-This module provides small, testable helpers for loading and cleaning
-datasets, detecting time/CPI-like columns, and summarizing statistics.
-Keep these functions pure where possible so they're easy to unit-test.
-"""
-
-import os
-from typing import Any, Dict, List, Optional
-
-import numpy as np
-import pandas as pd
-from statsmodels.tsa.arima.model import ARIMA
-from statsmodels.tsa.holtwinters import ExponentialSmoothing, SimpleExpSmoothing
 
 
 # --- Datetime parsing helpers ---

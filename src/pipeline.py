@@ -4,7 +4,8 @@ from __future__ import annotations
 import json
 import os
 import traceback
-from typing import Dict, List
+from concurrent.futures import ProcessPoolExecutor, as_completed
+from typing import Dict, List, Optional
 
 import numpy as np
 import pandas as pd
@@ -238,7 +239,10 @@ def analyze_file(path: str) -> Dict:
         return result
 
 
-def analyze_all() -> List[Dict]:
+def analyze_all(
+    max_workers: Optional[int] = None,
+    limit: Optional[int] = None,
+) -> List[Dict]:
     cfg = load_config()
     logger = get_logger("crystalball.pipeline")
     if not os.path.isdir(cfg.paths.raw_data_dir):
@@ -250,11 +254,45 @@ def analyze_all() -> List[Dict]:
     summary = utils.bulk_load_and_clean_raw_csv(cfg.paths.raw_data_dir, cfg.paths.processed_dir, logger=logger)
     logger.info("Cleaned %d CSV files", len(summary))
 
-    # Analyze processed files
+    # Analyze processed files in parallel
     files = [os.path.join(cfg.paths.processed_dir, f) for f in os.listdir(cfg.paths.processed_dir) if f.lower().endswith((".csv", ".xlsx"))]
+    if limit:
+        files = files[:limit]
+    
+    logger.info("Processing %d files with parallel workers (max_workers=%s)", len(files), max_workers)
     results: List[Dict] = []
-    for p in files:
-        results.append(analyze_file(p))
+    
+    with ProcessPoolExecutor(max_workers=max_workers) as executor:
+        # Submit all files for processing
+        future_to_file = {executor.submit(analyze_file, file_path): file_path for file_path in files}
+        
+        # Collect results as they complete
+        for i, future in enumerate(as_completed(future_to_file)):
+            file_path = future_to_file[future]
+            try:
+                result = future.result()
+                results.append(result)
+                logger.info(
+                    "[%d/%d] Successfully processed %s -> status: %s",
+                    i + 1,
+                    len(files),
+                    os.path.basename(file_path),
+                    result.get('status', 'unknown'),
+                )
+            except Exception:
+                logger.exception(
+                    "[%d/%d] FAILED to process %s",
+                    i + 1,
+                    len(files),
+                    os.path.basename(file_path),
+                )
+                # Add a failure record
+                results.append({
+                    'path': file_path,
+                    'status': 'error',
+                    'error': 'Process execution failed',
+                    'outputs': []
+                })
 
     # Write summary
     try:

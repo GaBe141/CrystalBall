@@ -5,6 +5,7 @@ import json
 import os
 import pathlib
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any, Dict, List, Optional, Tuple
 
 import pandas as pd
@@ -365,16 +366,25 @@ def run_llm_consensus(providers: Optional[List[str]] = None) -> Dict[str, Any]:
     summary_index = []
     for series_name, df, path in tables:
         panel_results: List[Dict[str, Any]] = []
-        for prov in active:
-            try:
-                if not prov.available():
+        
+        # Run all providers concurrently for this series
+        with ThreadPoolExecutor(max_workers=len(active)) as executor:
+            # Submit all available providers
+            future_to_prov = {}
+            for prov in active:
+                if prov.available():
+                    future_to_prov[executor.submit(prov.score, series_name, df)] = prov
+                else:
                     panel_results.append({"panelist": prov.name, "scores": [], "error": "unavailable"})
-                    continue
-                pr = prov.score(series_name, df)
-                panel_results.append(pr)
-                time.sleep(0.25)
-            except Exception as e:
-                panel_results.append({"panelist": prov.name, "scores": [], "error": repr(e)})
+            
+            # Collect results as they complete
+            for future in as_completed(future_to_prov):
+                prov = future_to_prov[future]
+                try:
+                    pr = future.result()
+                    panel_results.append(pr)
+                except Exception as e:
+                    panel_results.append({"panelist": prov.name, "scores": [], "error": repr(e)})
         consensus = _aggregate_consensus(panel_results)
         base = pathlib.Path(path).stem
         json_path = os.path.join(out_dir, f"{base}_llm_consensus.json")

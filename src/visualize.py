@@ -32,24 +32,26 @@ def save_matplotlib_timeseries(df: pd.DataFrame, out_path: str, title: str = Non
     """
     _ensure_dir(os.path.dirname(out_path))
     plt.style.use('seaborn-v0_8-whitegrid')
-    plt.figure(figsize=(12, 6))
-    for col in df.columns:
-        plt.plot(df.index, df[col], label=col, linewidth=2.0)
-    if isinstance(df.index, pd.DatetimeIndex):
-        locator = mdates.AutoDateLocator()
-        formatter = mdates.ConciseDateFormatter(locator)
-        ax = plt.gca()
-        ax.xaxis.set_major_locator(locator)
-        ax.xaxis.set_major_formatter(formatter)
-    plt.legend(loc='best', frameon=True)
-    plt.grid(alpha=0.3)
-    if title:
-        plt.title(title, fontsize=14)
-    plt.xlabel('Date' if isinstance(df.index, pd.DatetimeIndex) else 'Index', fontsize=12)
-    plt.ylabel('Value', fontsize=12)
-    plt.tight_layout()
-    plt.savefig(out_path, dpi=180)
-    plt.close()
+    # Use object-oriented API for explicit memory management
+    fig, ax = plt.subplots(figsize=(12, 6))
+    try:
+        for col in df.columns:
+            ax.plot(df.index, df[col], label=col, linewidth=2.0)
+        if isinstance(df.index, pd.DatetimeIndex):
+            locator = mdates.AutoDateLocator()
+            formatter = mdates.ConciseDateFormatter(locator)
+            ax.xaxis.set_major_locator(locator)
+            ax.xaxis.set_major_formatter(formatter)
+        ax.legend(loc='best', frameon=True)
+        ax.grid(alpha=0.3)
+        if title:
+            ax.set_title(title, fontsize=14)
+        ax.set_xlabel('Date' if isinstance(df.index, pd.DatetimeIndex) else 'Index', fontsize=12)
+        ax.set_ylabel('Value', fontsize=12)
+        fig.tight_layout()
+        fig.savefig(out_path, dpi=180)
+    finally:
+        plt.close(fig)  # Ensure figure memory is released
 
 
 def save_plotly_timeseries(df: pd.DataFrame, out_path: str, title: str = None):

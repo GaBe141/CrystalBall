@@ -165,59 +165,62 @@ def plot_model_outputs(series: pd.Series, base_name: str, target_col: Optional[s
             continue
         try:
             f = res["forecast"]
-            plt.figure(figsize=(10, 5))
-            plt.plot(series.index, series.values, label="Actual")
-            if res.get("fitted") is not None:
+            # Use object-oriented API for explicit memory management
+            fig, ax = plt.subplots(figsize=(10, 5))
+            try:
+                ax.plot(series.index, series.values, label="Actual")
+                if res.get("fitted") is not None:
+                    try:
+                        ax.plot(res["fitted"].index, res["fitted"].values, label=f"{name} fitted", linestyle="--")
+                    except Exception:
+                        pass
                 try:
-                    plt.plot(res["fitted"].index, res["fitted"].values, label=f"{name} fitted", linestyle="--")
+                    if isinstance(series.index, pd.DatetimeIndex) and not isinstance(f.index, pd.DatetimeIndex):
+                        freq = pd.infer_freq(series.index)
+                        if freq is not None:
+                            start = series.index[-1]
+                            future_index = pd.date_range(start=start + pd.tseries.frequencies.to_offset(freq), periods=len(f), freq=freq)
+                            f = pd.Series(getattr(f, 'values', f), index=future_index)
                 except Exception:
                     pass
-            try:
-                if isinstance(series.index, pd.DatetimeIndex) and not isinstance(f.index, pd.DatetimeIndex):
-                    freq = pd.infer_freq(series.index)
-                    if freq is not None:
-                        start = series.index[-1]
-                        future_index = pd.date_range(start=start + pd.tseries.frequencies.to_offset(freq), periods=len(f), freq=freq)
-                        f = pd.Series(getattr(f, 'values', f), index=future_index)
-            except Exception:
-                pass
-            try:
-                plt.plot(f.index, getattr(f, 'values', f), label=f"{name} forecast")
-            except Exception:
-                plt.plot(range(len(f)), f, label=f"{name} forecast")
-            # draw conformal intervals if we have residuals
-            try:
-                fitted_vals = res.get('fitted')
-                if fitted_vals is not None and isinstance(series.index, type(f.index)):
-                    # residuals from training
-                    train_idx = series.index.intersection(getattr(fitted_vals, 'index', series.index))
-                    if len(train_idx) >= 5:
-                        resid = series.loc[train_idx] - fitted_vals.loc[train_idx]
-                        ci = stats_robust.conformal_intervals_safe(resid, pd.Series(getattr(f, 'values', f), index=f.index), alpha=0.1)
-                        plt.fill_between(ci.index, ci['lower'].values, ci['upper'].values, color='gray', alpha=0.15, label=f"{name} conf. band")
-            except Exception:
-                pass
-            safe_target = sanitize_filename(target_col) if target_col else "target"
-            plt.title(f"{base_name}: {target_col} - {name} forecast")
-            plt.legend()
-            plt.tight_layout()
-            out_png = os.path.join(vis_dir, f"{sanitize_filename(base_name)}_{safe_target}_{name}_forecast.png")
-            tmp_png = out_png + '.tmp'
-            try:
-                plt.savefig(tmp_png, format='png')
-                plt.close()
                 try:
-                    os.replace(tmp_png, out_png)
+                    ax.plot(f.index, getattr(f, 'values', f), label=f"{name} forecast")
                 except Exception:
-                    os.rename(tmp_png, out_png)
-                outputs.append(out_png)
-            except Exception:
+                    ax.plot(range(len(f)), f, label=f"{name} forecast")
+                # draw conformal intervals if we have residuals
                 try:
-                    if os.path.exists(tmp_png):
-                        os.remove(tmp_png)
+                    fitted_vals = res.get('fitted')
+                    if fitted_vals is not None and isinstance(series.index, type(f.index)):
+                        # residuals from training
+                        train_idx = series.index.intersection(getattr(fitted_vals, 'index', series.index))
+                        if len(train_idx) >= 5:
+                            resid = series.loc[train_idx] - fitted_vals.loc[train_idx]
+                            ci = stats_robust.conformal_intervals_safe(resid, pd.Series(getattr(f, 'values', f), index=f.index), alpha=0.1)
+                            ax.fill_between(ci.index, ci['lower'].values, ci['upper'].values, color='gray', alpha=0.15, label=f"{name} conf. band")
                 except Exception:
                     pass
-                raise
+                safe_target = sanitize_filename(target_col) if target_col else "target"
+                ax.set_title(f"{base_name}: {target_col} - {name} forecast")
+                ax.legend()
+                fig.tight_layout()
+                out_png = os.path.join(vis_dir, f"{sanitize_filename(base_name)}_{safe_target}_{name}_forecast.png")
+                tmp_png = out_png + '.tmp'
+                try:
+                    fig.savefig(tmp_png, format='png')
+                    try:
+                        os.replace(tmp_png, out_png)
+                    except Exception:
+                        os.rename(tmp_png, out_png)
+                    outputs.append(out_png)
+                except Exception:
+                    try:
+                        if os.path.exists(tmp_png):
+                            os.remove(tmp_png)
+                    except Exception:
+                        pass
+                    raise
+            finally:
+                plt.close(fig)  # Ensure figure memory is released
         except Exception:
             logger.exception("Plotting failed for %s", name)
     return outputs
