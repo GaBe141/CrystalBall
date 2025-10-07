@@ -10,8 +10,9 @@ from typing import Dict, List, Optional
 import numpy as np
 import pandas as pd
 
-from . import evaluation, stats_robust, utils
-from .git_gateway import (
+from . import evaluation, stats_robust
+from ..core import utils
+from ..automation.git_gateway import (
     auto_push_on_execution,
     push_on_milestone,
     push_on_results_generated,
@@ -25,10 +26,10 @@ from .analysis import (
     run_diagnostics,
     sanitize_filename,
 )
-from .config import load_config
+from ..core.config import load_config
 from .ensemble import cv_weighted_ensemble
-from .logutil import get_logger
-from .models_semistructural import (
+from ..core.logutil import get_logger
+from ..models.models_semistructural import (
     fit_ml_enhanced_state_space,
     fit_semi_structural_gap_trend,
     suite_of_models_weighted,

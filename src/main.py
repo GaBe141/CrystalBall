@@ -3,29 +3,29 @@ import logging
 import os
 
 from src import export
-from src.git_gateway import (
+from src.automation.git_gateway import (
     auto_push_on_execution,
     push_on_milestone,
     AutoPushContext,
     start_auto_push_daemon
 )
-from src.config import load_config
-from src.diagnostics import (
+from src.core.config import load_config
+from src.analysis.diagnostics import (
     enable_warning_capture,
     guarded_call,
     install_global_exception_logger,
     log_environment,
     preflight_verify,
 )
-from src.logutil import get_logger
-from src.pipeline import analyze_all
+from src.core.logutil import get_logger
+from src.analysis.pipeline import analyze_all
 
 # Paths are provided by config; keep this file thin and CLI-focused.
 
 @auto_push_on_execution("File analysis completed")
 def analyze_file(path):
     # Backward compatibility: delegate to new pipeline implementation
-    from src.pipeline import analyze_file as _analyze
+    from src.analysis.pipeline import analyze_file as _analyze
     return _analyze(path)
 
 def main():

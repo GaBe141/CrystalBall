@@ -11,7 +11,7 @@ from pathlib import Path
 # Add src to path for imports
 sys.path.insert(0, str(Path(__file__).parent))
 
-from src.git_gateway import (
+from src.automation.git_gateway import (
     start_auto_push_daemon,
     stop_auto_push_daemon,
     push_on_milestone,
