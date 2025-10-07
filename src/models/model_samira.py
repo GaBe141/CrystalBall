@@ -272,14 +272,14 @@ class SAMIRAModel:
         # Handle missing values
         if y.isnull().any():
             warnings.warn("Missing values detected, using forward fill")
-            y = y.fillna(method='ffill').fillna(method='bfill')
+            y = y.ffill().bfill()
             
         if exog is not None:
             if exog.isnull().any().any():
                 warnings.warn("Missing values in exogenous variables, using forward fill")
-                exog = exog.fillna(method='ffill').fillna(method='bfill')
+                exog = exog.ffill().bfill()
             # Align exog with y
-            exog = exog.reindex(y.index).fillna(method='ffill').fillna(method='bfill')
+            exog = exog.reindex(y.index).ffill().bfill()
         
         # Store data
         self.y_ = y.copy()

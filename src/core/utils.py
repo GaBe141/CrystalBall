@@ -52,10 +52,13 @@ def bulk_load_and_clean_raw_csv(raw_dir, processed_dir, logger=None):
                 continue
         # Clean column names
         df.columns = [str(c).strip().replace('\n', ' ').replace('\r', '').replace('"', '').replace("'", '').replace(' ', '_').replace('%','pct').replace('/','_').replace(':','_').replace(',','_') for c in df.columns]
-        # Try to coerce all columns to numeric where possible
+        # Try to coerce all columns to numeric where possible without deprecated options
         for col in df.columns:
             try:
-                df[col] = pd.to_numeric(df[col], errors='ignore')
+                coerced = pd.to_numeric(df[col], errors='coerce')
+                # Only replace if substantial numeric values are present
+                if coerced.notna().mean() > 0.6:
+                    df[col] = coerced
             except Exception:
                 pass
         # Drop fully empty columns

@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 
 
-def _dt_index(n: int, freq: str = "M", start: str = "2000-01-01") -> pd.DatetimeIndex:
+def _dt_index(n: int, freq: str = "ME", start: str = "2000-01-01") -> pd.DatetimeIndex:
     return pd.date_range(start=start, periods=n, freq=freq)
 
 
