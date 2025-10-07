@@ -1,1 +1,97 @@
-# Configuration settings for CrystalBall data processing system
+# CrystalBall Configuration
+# Main configuration file for CrystalBall time series analysis system
+
+# File paths configuration
+paths:
+  raw_data_dir: "data/raw"           # Directory for raw input data files
+  processed_dir: "data/processed"    # Directory for processed analysis results
+  visuals_dir: "data/processed/visualizations"  # Directory for generated charts and plots
+  exports_dir: "data/processed/exports"         # Directory for exported reports (PDF, PPTX, etc.)
+
+# Analysis and modeling settings
+settings:
+  test_size_fraction: 0.2            # Fraction of data to reserve for testing (0.0-1.0)
+  max_affinity_features: 5           # Maximum number of features for affinity analysis
+  
+  # API configuration
+  api_timeout_seconds: 15.0          # Timeout for API requests in seconds
+  api_max_retries: 3                 # Maximum number of retry attempts for failed API calls
+  api_backoff_seconds: 0.5           # Base backoff time between retries
+  api_cache_ttl_seconds: 3600        # API response cache time-to-live in seconds
+  api_user_agent: "CrystalBall/1.0"  # User agent string for API requests
+  
+  # Model evaluation settings
+  cv_folds: 5                        # Number of cross-validation folds
+  forecast_horizon_auto: true        # Automatically determine forecast horizon
+  min_series_length: 10              # Minimum series length for analysis
+  
+  # Performance and resource limits
+  max_parallel_processes: 4          # Maximum number of parallel processes for analysis
+  memory_limit_mb: 2048              # Memory limit per process in MB
+  
+# Logging configuration
+logging:
+  level: "INFO"                      # Log level: DEBUG, INFO, WARNING, ERROR, CRITICAL
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  file_logging: false                # Enable logging to file
+  log_file_path: "logs/crystalball.log"  # Path for log file if file_logging is true
+  
+# Model-specific settings
+models:
+  # ARIMA model settings
+  arima:
+    max_p: 5                         # Maximum autoregressive order
+    max_d: 2                         # Maximum differencing order
+    max_q: 5                         # Maximum moving average order
+    seasonal: true                   # Enable seasonal ARIMA
+    
+  # Exponential Smoothing settings
+  ets:
+    trend_options: ["add", "mul", null]      # Trend component options
+    seasonal_options: ["add", "mul", null]   # Seasonal component options
+    damped_trend: true               # Allow damped trend
+    
+  # Prophet model settings
+  prophet:
+    yearly_seasonality: "auto"       # Yearly seasonality: true, false, "auto"
+    weekly_seasonality: "auto"       # Weekly seasonality: true, false, "auto" 
+    daily_seasonality: "auto"        # Daily seasonality: true, false, "auto"
+    changepoint_prior_scale: 0.05    # Changepoint prior scale
+    seasonality_prior_scale: 10.0    # Seasonality prior scale
+    
+  # Ensemble settings
+  ensemble:
+    weight_method: "inverse_error"   # Weighting method: "equal", "inverse_error", "cv_score"
+    min_models_required: 2           # Minimum models required for ensemble
+    outlier_threshold: 3.0           # Z-score threshold for outlier detection
+    
+# Export settings
+export:
+  # PDF export settings
+  pdf:
+    page_size: "A4"                  # Page size: A4, Letter, Legal
+    orientation: "portrait"          # Orientation: portrait, landscape
+    margins: 20                      # Margins in mm
+    
+  # PowerPoint export settings
+  pptx:
+    template: null                   # Template file path (null for default)
+    slide_size: "16:9"              # Slide size: "16:9", "4:3"
+    
+  # Excel export settings
+  xlsx:
+    include_charts: true             # Include charts in Excel export
+    sheet_naming: "descriptive"      # Sheet naming: "descriptive", "simple"
+    
+# Advanced settings (modify with caution)
+advanced:
+  multiprocessing_method: "spawn"    # Multiprocessing method: "spawn", "fork", "forkserver"
+  torch_threads: 1                   # Number of torch threads (if using PyTorch models)
+  warning_filters: ["ignore::UserWarning", "ignore::FutureWarning"]
+  
+# Development and debugging
+development:
+  debug_mode: false                  # Enable debug mode
+  profiling_enabled: false          # Enable performance profiling
+  save_intermediate_results: false  # Save intermediate analysis results
+  verbose_logging: false            # Enable verbose logging for troubleshooting

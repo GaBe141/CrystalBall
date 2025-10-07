@@ -1,25 +1,6 @@
 # CrystalBall Directory Structure
 
 ## 📁 Organized Code Structure
-```
-src/
-├── core/                      # Core utilities and configuration
-│   ├── __init__.py
-│   ├── config.py             # Configuration management
-│   ├── utils.py              # Core utility functions
-│   ├── logutil.py            # Logging utilities
-│   └── schemas.py            # Data schemas and types
-│
-├── analysis/                  # Analysis pipeline and algorithms
-│   ├── __init__.py
-│   ├── pipeline.py           # Main analysis pipeline
-│   ├── analysis.py           # Core analysis functions
-│   ├── diagnostics.py        # Diagnostic utilities
-│   ├── evaluation.py         # Model evaluation
-│   ├── ensemble.py           # Ensemble methods
-# CrystalBall Directory Structure
-
-## 📁 Organized Code Structure
 
 ```text
 src/

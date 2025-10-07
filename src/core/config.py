@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass
-from typing import Any, Dict, Optional
+from typing import Any
 
 try:
     import yaml  # type: ignore
@@ -27,12 +27,28 @@ class Paths:
 class Settings:
     test_size_fraction: float = 0.2
     max_affinity_features: int = 5
+    
     # API defaults
     api_timeout_seconds: float = 15.0
     api_max_retries: int = 3
     api_backoff_seconds: float = 0.5
     api_cache_ttl_seconds: int = 3600
     api_user_agent: str = "CrystalBall/1.0"
+    
+    # Model evaluation settings
+    cv_folds: int = 5
+    forecast_horizon_auto: bool = True
+    min_series_length: int = 10
+    
+    # Performance and resource limits
+    max_parallel_processes: int = 4
+    memory_limit_mb: int = 2048
+    
+    # Logging settings
+    log_level: str = "INFO"
+    log_format: str = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    file_logging: bool = False
+    log_file_path: str = "logs/crystalball.log"
 
 
 @dataclass
@@ -41,7 +57,7 @@ class AppConfig:
     settings: Settings
 
 
-def _load_yaml(path: str) -> Optional[Dict[str, Any]]:
+def _load_yaml(path: str) -> dict[str, Any] | None:
     if yaml is None:
         return None
     if not os.path.exists(path):
@@ -63,13 +79,42 @@ def load_config() -> AppConfig:
         exports_dir=paths_cfg.get('exports_dir', Paths.exports_dir),
     )
     settings = Settings(
-        test_size_fraction=float(settings_cfg.get('test_size_fraction', Settings.test_size_fraction)),
-        max_affinity_features=int(settings_cfg.get('max_affinity_features', Settings.max_affinity_features)),
-        api_timeout_seconds=float(settings_cfg.get('api_timeout_seconds', Settings.api_timeout_seconds)),
+        test_size_fraction=float(
+            settings_cfg.get('test_size_fraction', Settings.test_size_fraction)
+        ),
+        max_affinity_features=int(
+            settings_cfg.get('max_affinity_features', Settings.max_affinity_features)
+        ),
+        api_timeout_seconds=float(
+            settings_cfg.get('api_timeout_seconds', Settings.api_timeout_seconds)
+        ),
         api_max_retries=int(settings_cfg.get('api_max_retries', Settings.api_max_retries)),
-        api_backoff_seconds=float(settings_cfg.get('api_backoff_seconds', Settings.api_backoff_seconds)),
-        api_cache_ttl_seconds=int(settings_cfg.get('api_cache_ttl_seconds', Settings.api_cache_ttl_seconds)),
+        api_backoff_seconds=float(
+            settings_cfg.get('api_backoff_seconds', Settings.api_backoff_seconds)
+        ),
+        api_cache_ttl_seconds=int(
+            settings_cfg.get('api_cache_ttl_seconds', Settings.api_cache_ttl_seconds)
+        ),
         api_user_agent=str(settings_cfg.get('api_user_agent', Settings.api_user_agent)),
+        cv_folds=int(settings_cfg.get('cv_folds', Settings.cv_folds)),
+        forecast_horizon_auto=bool(
+            settings_cfg.get('forecast_horizon_auto', Settings.forecast_horizon_auto)
+        ),
+        min_series_length=int(
+            settings_cfg.get('min_series_length', Settings.min_series_length)
+        ),
+        max_parallel_processes=int(
+            settings_cfg.get('max_parallel_processes', Settings.max_parallel_processes)
+        ),
+        memory_limit_mb=int(settings_cfg.get('memory_limit_mb', Settings.memory_limit_mb)),
+        log_level=str(settings_cfg.get('logging', {}).get('level', Settings.log_level)),
+        log_format=str(settings_cfg.get('logging', {}).get('format', Settings.log_format)),
+        file_logging=bool(
+            settings_cfg.get('logging', {}).get('file_logging', Settings.file_logging)
+        ),
+        log_file_path=str(
+            settings_cfg.get('logging', {}).get('log_file_path', Settings.log_file_path)
+        ),
     )
     # ensure directories exist
     os.makedirs(paths.processed_dir, exist_ok=True)

@@ -19,5 +19,40 @@ no_implicit_optional = true
 warn_unused_ignores = true
 exclude = "(dist|build|.venv)/"
 ignore_missing_imports = true
-# Keep mypy narrow to core schemas for now; broaden later as types mature
-files = ["src/core/schemas.py"]
+# Expanded type coverage to entire src/ directory
+files = ["src/"]
+strict = true
+warn_return_any = true
+warn_unused_configs = true
+show_error_codes = true
+warn_redundant_casts = true
+
+[tool.coverage.run]
+source = ["src"]
+branch = true
+omit = [
+    "src/tools/*",
+    "src/visualization/visuals.py",
+    "*/test_*",
+    "*/__pycache__/*"
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if self.debug:",
+    "if settings.DEBUG",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if 0:",
+    "if __name__ == .__main__.:",
+    "except ImportError:",
+    "except Exception:"
+]
+ignore_errors = true
+show_missing = true
+precision = 2
+
+[tool.coverage.html]
+directory = "htmlcov"
