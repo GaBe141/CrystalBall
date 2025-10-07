@@ -256,7 +256,8 @@ class CPIPlotGenerator:
             elif model_name == 'prophet':
                 return utils.fit_prophet_series(self.cpi_series, test_size=test_size, **kwargs)
             elif model_name == 'samira':
-                return fit_samira_model(self.cpi_series, test_size=test_size, **kwargs)
+                result: dict[str, Any] = fit_samira_model(self.cpi_series, test_size=test_size, **kwargs)
+                return result
             elif model_name == 'croston':
                 return utils.fit_croston(self.cpi_series, test_size=test_size, **kwargs)
             elif model_name == 'naive':
@@ -267,7 +268,8 @@ class CPIPlotGenerator:
                 return self._fit_drift_model(self.cpi_series, test_size=test_size)
             elif hasattr(advanced_models, f'fit_{model_name}_model'):
                 model_func = getattr(advanced_models, f'fit_{model_name}_model')
-                return model_func(self.cpi_series, test_size=test_size, **kwargs)
+                result: dict[str, Any] = model_func(self.cpi_series, test_size=test_size, **kwargs)
+                return result
             else:
                 raise ValueError(f"Model implementation for '{model_name}' not found")
                     
