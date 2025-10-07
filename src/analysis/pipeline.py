@@ -36,8 +36,7 @@ from ..models.models_semistructural import (
 )
 
 
-@auto_push_on_execution("File analysis completed")
-def analyze_file(path: str) -> Dict:
+def _analyze_file_impl(path: str) -> Dict:
     cfg = load_config()
     logger = get_logger(f"crystalball.{sanitize_filename(os.path.basename(path))}")
     base_name = os.path.splitext(os.path.basename(path))[0]
@@ -273,6 +272,15 @@ def analyze_file(path: str) -> Dict:
         return result
 
 
+@auto_push_on_execution("File analysis completed")
+def analyze_file(path: str) -> Dict:
+    """Public friendly wrapper that also triggers auto-push when called directly.
+
+    Note: When using multiprocessing on Windows, submit _analyze_file_impl to
+    the executor to avoid pickling decorated closures.
+    """
+    return _analyze_file_impl(path)
+
 @auto_push_on_execution("Batch analysis completed")
 def analyze_all(
     max_workers: Optional[int] = None,
@@ -299,8 +307,8 @@ def analyze_all(
     
     with AutoPushContext(f"Processing {len(files)} files"):
         with ProcessPoolExecutor(max_workers=max_workers) as executor:
-            # Submit all files for processing
-            future_to_file = {executor.submit(analyze_file, file_path): file_path for file_path in files}
+            # Submit all files for processing (use pool-safe implementation)
+            future_to_file = {executor.submit(_analyze_file_impl, file_path): file_path for file_path in files}
         
         # Collect results as they complete
         for i, future in enumerate(as_completed(future_to_file)):

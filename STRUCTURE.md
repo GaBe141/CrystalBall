@@ -43,7 +43,9 @@ src/
 │   ├── api.py                # API interface
 │   ├── dashboard.py          # Streamlit dashboard
 │   ├── export.py             # Data export utilities
-│   ├── main.py               # Main entry point
+│   ├── leaderboard.py        # Global leaderboard aggregation
+│   ├── main.py               # Main entry point / CLI
+│   ├── run_dashboard.py      # Streamlit runner (python -m src.run_dashboard)
 │   └── ...
 │
 tools/                         # Command-line tools and utilities
@@ -52,6 +54,11 @@ tools/                         # Command-line tools and utilities
 ├── visualize_cli.py          # Visualization CLI
 ├── generate_dummy_results.py # Test data generation
 └── synthetic.py              # Synthetic data tools
+
+src/tools/                    # Python tools as importable utilities
+├── data_processor.py         # Moved from src/dataprocessor.py (shim left in place)
+├── synthetic.py              # Synthetic data helpers (importable)
+└── generate_dummy_results.py # Helper generators (importable)
 
 tests/                         # Test suite
 ├── test_*.py                 # Unit tests
