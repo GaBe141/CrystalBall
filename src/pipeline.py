@@ -11,6 +11,12 @@ import numpy as np
 import pandas as pd
 
 from . import evaluation, stats_robust, utils
+from .git_gateway import (
+    auto_push_on_execution,
+    push_on_milestone,
+    push_on_results_generated,
+    AutoPushContext
+)
 from .analysis import (
     compute_candidates,
     compute_rankings_and_adherence,
@@ -29,6 +35,7 @@ from .models_semistructural import (
 )
 
 
+@auto_push_on_execution("File analysis completed")
 def analyze_file(path: str) -> Dict:
     cfg = load_config()
     logger = get_logger(f"crystalball.{sanitize_filename(os.path.basename(path))}")
@@ -239,6 +246,7 @@ def analyze_file(path: str) -> Dict:
         return result
 
 
+@auto_push_on_execution("Batch analysis completed")
 def analyze_all(
     max_workers: Optional[int] = None,
     limit: Optional[int] = None,
@@ -262,9 +270,10 @@ def analyze_all(
     logger.info("Processing %d files with parallel workers (max_workers=%s)", len(files), max_workers)
     results: List[Dict] = []
     
-    with ProcessPoolExecutor(max_workers=max_workers) as executor:
-        # Submit all files for processing
-        future_to_file = {executor.submit(analyze_file, file_path): file_path for file_path in files}
+    with AutoPushContext(f"Processing {len(files)} files"):
+        with ProcessPoolExecutor(max_workers=max_workers) as executor:
+            # Submit all files for processing
+            future_to_file = {executor.submit(analyze_file, file_path): file_path for file_path in files}
         
         # Collect results as they complete
         for i, future in enumerate(as_completed(future_to_file)):
@@ -294,12 +303,16 @@ def analyze_all(
                     'outputs': []
                 })
 
+        # Push milestone after processing all files
+        push_on_milestone(f"Processed {len(files)} files - {len([r for r in results if r.get('status') == 'success'])} successful")
+
     # Write summary
     try:
         summary_path = os.path.join(cfg.paths.processed_dir, "processing_summary.json")
         with open(summary_path, 'w', encoding='utf-8') as fh:
             json.dump(results, fh, default=str, indent=2)
         logger.info("Processing summary written: %s", summary_path)
+        push_on_results_generated()  # Trigger push when results are written
     except Exception:
         logger.exception("Failed to write processing summary")
     return results

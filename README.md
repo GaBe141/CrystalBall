@@ -29,6 +29,76 @@ Developer hygiene
   - Tests: `pytest -q`
 # CrystalBall Data Processing System
 
-A local project for processing data.
+A local project for processing data with automated GitHub backup integration.
+
+## 🚀 Auto-Push Git Gateway
+
+CrystalBall includes an intelligent Git Gateway system that automatically backs up your work to GitHub during analysis runs.
+
+### Features
+
+- **Automatic Pushes**: Triggers git pushes during code execution
+- **Smart Rate Limiting**: Prevents excessive commits (5-minute minimum intervals)
+- **File Watching**: Monitors data/results folders for changes
+- **Context-Aware**: Different triggers for analysis completion, data changes, errors
+- **Background Daemon**: Scheduled pushes for pending changes
+
+### Usage
+
+**Enhanced Main Script (Recommended)**:
+```bash
+python main_with_autopush.py
+```
+
+**CLI Management**:
+```bash
+# Show status
+python tools/git_gateway_cli.py status
+
+# Start/stop daemon
+python tools/git_gateway_cli.py start
+python tools/git_gateway_cli.py stop
+
+# Force push with custom message
+python tools/git_gateway_cli.py push -m "Custom milestone"
+
+# Mark milestone
+python tools/git_gateway_cli.py milestone "Analysis complete"
+
+# File watcher mode
+python tools/git_gateway_cli.py watch
+```
+
+**Programmatic Integration**:
+```python
+from src.git_gateway import auto_push_on_execution, push_on_milestone
+
+@auto_push_on_execution("Custom analysis completed")
+def my_analysis():
+    # Your analysis code here
+    pass
+
+# Manual milestone
+push_on_milestone("Important checkpoint reached")
+```
+
+### Auto-Push Triggers
+
+- ✅ **File Analysis**: After each file is processed
+- ✅ **Batch Analysis**: After full batch completion  
+- ✅ **Results Generation**: When CSV/JSON outputs are created
+- ✅ **Data Changes**: When input data files are modified
+- ✅ **Visualizations**: When plots/charts are generated
+- ✅ **Error Recovery**: Captures work even when errors occur
+- ✅ **Session Milestones**: Start/end of analysis sessions
+- ✅ **Scheduled Backup**: Every 10 minutes if changes exist
+
+### Configuration
+
+Edit `config/git_gateway_config.py` to customize:
+- Push frequency and rate limits
+- File patterns to monitor
+- Commit message templates
+- Safety constraints
 \n+## Interactive Dashboard
 \n+Run the Streamlit dashboard after an analysis run to explore results:\n\n1. Ensure dependencies are installed in your venv:\n   - `pip install -r requirements.txt`\n2. Launch the dashboard:\n   - `python -m src.run_dashboard`\n3. The app will open in your browser with:\n   - Per-series model rankings (table + Plotly chart)\n   - Forecast adherence report image per series\n   - Forecast plot gallery\n   - Global leaderboard (CSV + Plotly bar)\n\nTip: If you prefer, you can also run directly:\n   - `streamlit run src/dashboard.py`
