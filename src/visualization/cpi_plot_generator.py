@@ -11,6 +11,7 @@ from typing import Any
 
 import matplotlib.dates as mdates
 import matplotlib.pyplot as plt
+import matplotlib.figure
 import numpy as np
 import pandas as pd
 import seaborn as sns
@@ -380,7 +381,7 @@ class CPIPlotGenerator:
     
     def generate_single_model_plot(self, model_name: str, test_size: int = 12, 
                                  figsize: tuple[int, int] = (12, 8),
-                                 save_plot: bool = True, **kwargs) -> plt.Figure:
+                                 save_plot: bool = True, **kwargs) -> matplotlib.figure.Figure:
         """
         Generate a plot for a single forecasting model.
         
@@ -593,7 +594,7 @@ class CPIPlotGenerator:
     
     def generate_model_ranking_plot(self, model_names: list[str], test_size: int = 12,
                                   cv_folds: int = 3, figsize: tuple[int, int] = (12, 8),
-                                  save_plot: bool = True) -> plt.Figure:
+                                  save_plot: bool = True) -> matplotlib.figure.Figure:
         """
         Generate a model ranking plot based on cross-validation performance.
         
@@ -810,7 +811,7 @@ class CPIPlotGenerator:
         logger.info(f"Interactive dashboard saved: {html_filepath}")
         return html_filepath
     
-    def print_available_models(self):
+    def print_available_models(self) -> None:
         """Print all available forecasting models."""
         print("\n🤖 Available CPI Forecasting Models:")
         print("=" * 60)
@@ -904,7 +905,7 @@ class CPIPlotGenerator:
 
 # Convenience function for quick usage
 def quick_cpi_forecast(model_name: str = 'arima', data_path: str | None = None, 
-                      show_plot: bool = True) -> plt.Figure:
+                      show_plot: bool = True) -> matplotlib.figure.Figure:
     """
     Quick function to generate a CPI forecast plot with a single model.
     
