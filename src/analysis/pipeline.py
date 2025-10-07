@@ -27,7 +27,7 @@ from .analysis import (
     sanitize_filename,
 )
 from ..core.config import load_config
-from .ensemble import cv_weighted_ensemble
+from .ensemble import cv_weighted_ensemble, kwartz_ensemble
 from ..core.logutil import get_logger
 from ..models.models_semistructural import (
     fit_ml_enhanced_state_space,
@@ -147,6 +147,14 @@ def _analyze_file_impl(path: str) -> Dict:
                 }
         except Exception:
             logger.exception("Suite-of-models ensemble failed")
+
+        # Kwartz: accuracy-weighted chimera over available models
+        try:
+            kw = kwartz_ensemble(models, actual=series, power=1.0, name="kwartz")
+            if kw and kw.get('forecast') is not None:
+                models['kwartz'] = kw
+        except Exception:
+            logger.exception("Kwartz ensemble failed")
 
         # ranking
         result['outputs'].extend(
