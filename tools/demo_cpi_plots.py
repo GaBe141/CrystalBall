@@ -18,7 +18,7 @@ warnings.filterwarnings('ignore')
 
 from visualization.cpi_plot_generator import CPIPlotGenerator, quick_cpi_forecast
 
-def main():
+def main() -> None:
     """Run the CPI plot generator demo."""
     print("🔮 CPI Forecasting Plot Generator Demo")
     print("=" * 50)
@@ -113,7 +113,7 @@ def main():
     print(f"📁 Check the output directory: {generator.output_dir}")
     print("🖼️  All generated plots and dashboard are saved there.")
 
-def interactive_demo():
+def interactive_demo() -> None:
     """Run interactive demo where user can choose options."""
     generator = CPIPlotGenerator()
     generator.run_interactive_mode()

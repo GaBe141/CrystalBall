@@ -17,7 +17,7 @@ import matplotlib
 matplotlib.use('Agg')  # Use non-interactive backend
 import matplotlib.pyplot as plt
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(
         description='CPI Forecasting Plot Generator',
         formatter_class=argparse.RawDescriptionHelpFormatter,

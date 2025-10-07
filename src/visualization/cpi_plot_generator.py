@@ -10,18 +10,17 @@ import warnings
 from typing import Any
 
 import matplotlib.dates as mdates
-import matplotlib.pyplot as plt
 import matplotlib.figure
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import seaborn as sns
 
-# Internal imports
 from src.analysis.evaluation import compute_model_cv_metrics
 from src.core import utils
 from src.core.logutil import get_logger
-from src.models.model_samira import fit_samira_model
 from src.models import advanced_models
+from src.models.model_samira import fit_samira_model
 
 logger = get_logger(__name__)
 
@@ -249,33 +248,49 @@ class CPIPlotGenerator:
         logger.info(f"Fitting {model_name} model...")
         
         try:
-            if model_name == 'arima':
-                return utils.fit_arima_series(self.cpi_series, test_size=test_size, **kwargs)
-            elif model_name == 'ets':
-                return utils.fit_exponential_smoothing(self.cpi_series, test_size=test_size, **kwargs)
-            elif model_name == 'prophet':
-                return utils.fit_prophet_series(self.cpi_series, test_size=test_size, **kwargs)
-            elif model_name == 'samira':
-                result: dict[str, Any] = fit_samira_model(self.cpi_series, test_size=test_size, **kwargs)
-                return result
-            elif model_name == 'croston':
-                return utils.fit_croston(self.cpi_series, test_size=test_size, **kwargs)
-            elif model_name == 'naive':
-                return self._fit_naive_model(self.cpi_series, test_size=test_size)
-            elif model_name == 'seasonal_naive':
-                return self._fit_seasonal_naive_model(self.cpi_series, test_size=test_size)
-            elif model_name == 'drift':
-                return self._fit_drift_model(self.cpi_series, test_size=test_size)
-            elif hasattr(advanced_models, f'fit_{model_name}_model'):
-                model_func = getattr(advanced_models, f'fit_{model_name}_model')
-                advanced_result: dict[str, Any] = model_func(self.cpi_series, test_size=test_size, **kwargs)
-                return advanced_result
-            else:
-                raise ValueError(f"Model implementation for '{model_name}' not found")
-                    
+            return self._dispatch_model_fitting(model_name, test_size, **kwargs)
         except Exception as e:
             logger.error(f"Error fitting {model_name} model: {e}")
             return {'error': str(e), 'model': None, 'forecast': None}
+    
+    def _dispatch_model_fitting(
+        self, model_name: str, test_size: int, **kwargs: Any
+    ) -> dict[str, Any]:
+        """Dispatch model fitting based on model name."""
+        # Standard model mappings
+        standard_models = {
+            'arima': lambda: utils.fit_arima_series(
+                self.cpi_series, test_size=test_size, **kwargs
+            ),
+            'ets': lambda: utils.fit_exponential_smoothing(
+                self.cpi_series, test_size=test_size, **kwargs
+            ),
+            'prophet': lambda: utils.fit_prophet_series(
+                self.cpi_series, test_size=test_size, **kwargs
+            ),
+            'samira': lambda: fit_samira_model(
+                self.cpi_series, test_size=test_size, **kwargs
+            ),
+            'croston': lambda: utils.fit_croston(
+                self.cpi_series, test_size=test_size, **kwargs
+            ),
+            'naive': lambda: self._fit_naive_model(self.cpi_series, test_size=test_size),
+            'seasonal_naive': lambda: self._fit_seasonal_naive_model(
+                self.cpi_series, test_size=test_size
+            ),
+            'drift': lambda: self._fit_drift_model(self.cpi_series, test_size=test_size),
+        }
+        
+        # Check standard models first
+        if model_name in standard_models:
+            return standard_models[model_name]()
+        
+        # Check advanced models
+        if hasattr(advanced_models, f'fit_{model_name}_model'):
+            model_func = getattr(advanced_models, f'fit_{model_name}_model')
+            return model_func(self.cpi_series, test_size=test_size, **kwargs)
+        
+        raise ValueError(f"Model implementation for '{model_name}' not found")
     
     def _fit_naive_model(self, series: pd.Series, test_size: int = 12) -> dict[str, Any]:
         """Fit naive (last value) model."""
