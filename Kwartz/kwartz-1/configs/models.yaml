@@ -1,0 +1,21 @@
+models:
+  - name: ModelA
+    accuracy: 0.85
+    parameters:
+      learning_rate: 0.01
+      epochs: 100
+  - name: ModelB
+    accuracy: 0.90
+    parameters:
+      learning_rate: 0.005
+      epochs: 150
+  - name: ModelC
+    accuracy: 0.88
+    parameters:
+      learning_rate: 0.01
+      epochs: 120
+
+kwartz:
+  weighting_scheme: accuracy_based
+  ensemble_method: weighted_average
+  output_model: final_model.pkl

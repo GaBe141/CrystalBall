@@ -1,0 +1,23 @@
+[tool.poetry]
+name = "kwartz"
+version = "0.1.0"
+description = "A model that combines other models based on their accuracy."
+authors = ["Your Name <youremail@example.com>"]
+license = "MIT"
+
+[tool.poetry.dependencies]
+python = "^3.8"
+numpy = "^1.21"
+pandas = "^1.3"
+scikit-learn = "^0.24"
+torch = "^1.9"
+tensorflow = "^2.6"
+
+[tool.poetry.dev-dependencies]
+pytest = "^6.2"
+black = "^21.7b0"
+mypy = "^0.910"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
