@@ -108,6 +108,15 @@ def analyze_file(path: str) -> Dict:
         except Exception:
             logger.exception("ML-enhanced state-space failed")
 
+        # SAMIRA (State-space Adaptive Multi-variate Integrated Regression Analysis)
+        try:
+            from ..models.model_samira import fit_samira_model
+            samira_res = fit_samira_model(series, test_size=test_size, exog=exog_df)
+            if isinstance(samira_res, dict) and samira_res.get('forecast') is not None:
+                models['samira'] = samira_res
+        except Exception:
+            logger.exception("SAMIRA model failed")
+
         # optional wrappers
         try:
             sf_res = utils.fit_statsforecast_model(series, test_size=test_size, model_name="auto", exog=exog_df)
@@ -160,6 +169,9 @@ def analyze_file(path: str) -> Dict:
                             r = utils.fit_theta_method(train, test_size=h)
                         elif key == 'croston':
                             r = utils.fit_croston(train, n_forecast=h)
+                        elif key == 'samira':
+                            from ..models.model_samira import fit_samira_model
+                            r = fit_samira_model(train, test_size=h, exog=None)  # No exog for CV speed
                         else:
                             # fallback: naive last value
                             last = float(train.iloc[-1])
