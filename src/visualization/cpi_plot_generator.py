@@ -166,7 +166,7 @@ class CPIPlotGenerator:
             
         numeric_cols = self.data.select_dtypes(include=[np.number]).columns.tolist()
         if numeric_cols:
-            cpi_col = numeric_cols[0]
+            cpi_col = str(numeric_cols[0])
             logger.warning(f"No CPI column detected. Using first numeric column: {cpi_col}")
             return cpi_col
         else:
@@ -252,7 +252,7 @@ class CPIPlotGenerator:
             if model_name == 'arima':
                 return utils.fit_arima_series(self.cpi_series, test_size=test_size, **kwargs)
             elif model_name == 'ets':
-                return utils.fit_ets_series(self.cpi_series, test_size=test_size, **kwargs)
+                return utils.fit_exponential_smoothing(self.cpi_series, test_size=test_size, **kwargs)
             elif model_name == 'prophet':
                 return utils.fit_prophet_series(self.cpi_series, test_size=test_size, **kwargs)
             elif model_name == 'samira':
@@ -265,13 +265,11 @@ class CPIPlotGenerator:
                 return self._fit_seasonal_naive_model(self.cpi_series, test_size=test_size)
             elif model_name == 'drift':
                 return self._fit_drift_model(self.cpi_series, test_size=test_size)
+            elif hasattr(advanced_models, f'fit_{model_name}_model'):
+                model_func = getattr(advanced_models, f'fit_{model_name}_model')
+                return model_func(self.cpi_series, test_size=test_size, **kwargs)
             else:
-                # Try to use from advanced models
-                if hasattr(advanced_models, f'fit_{model_name}_model'):
-                    model_func = getattr(advanced_models, f'fit_{model_name}_model')
-                    return model_func(self.cpi_series, test_size=test_size, **kwargs)
-                else:
-                    raise ValueError(f"Model implementation for '{model_name}' not found")
+                raise ValueError(f"Model implementation for '{model_name}' not found")
                     
         except Exception as e:
             logger.error(f"Error fitting {model_name} model: {e}")
@@ -419,8 +417,8 @@ class CPIPlotGenerator:
         fig, ax = plt.subplots(figsize=figsize)
         
         # Plot historical data
-        train_data = self.cpi_series.iloc[:-test_size] if test_size > 0 else self.cpi_series
-        test_data = self.cpi_series.iloc[-test_size:] if test_size > 0 else None
+        train_data: pd.Series = self.cpi_series.iloc[:-test_size] if test_size > 0 else self.cpi_series
+        test_data: pd.Series | None = self.cpi_series.iloc[-test_size:] if test_size > 0 else None
         
         ax.plot(train_data.index, train_data.values, 
                label='Training Data', color='blue', linewidth=2)
@@ -515,8 +513,8 @@ class CPIPlotGenerator:
                                       gridspec_kw={'height_ratios': [3, 1]})
         
         # Main plot
-        train_data = self.cpi_series.iloc[:-test_size] if test_size > 0 else self.cpi_series
-        test_data = self.cpi_series.iloc[-test_size:] if test_size > 0 else None
+        train_data: pd.Series = self.cpi_series.iloc[:-test_size] if test_size > 0 else self.cpi_series
+        test_data: pd.Series | None = self.cpi_series.iloc[-test_size:] if test_size > 0 else None
         
         ax1.plot(train_data.index, train_data.values, 
                 label='Training Data', color='black', linewidth=2.5)
@@ -526,7 +524,7 @@ class CPIPlotGenerator:
                     label='Actual (Test)', color='black', linewidth=2.5, linestyle='--')
         
         # Plot forecasts for each model
-        colors = plt.cm.tab10(np.linspace(0, 1, len(model_names)))
+        colors = plt.cm.get_cmap('tab10')(np.linspace(0, 1, len(model_names)))
         metrics_data = []
         
         for _, (model_name, color) in enumerate(zip(model_names, colors, strict=True)):
@@ -628,7 +626,7 @@ class CPIPlotGenerator:
                             # Pad with last value if forecast is shorter
                             last_val = forecast_values[-1] if len(forecast_values) > 0 else train_series.iloc[-1]
                             forecast_values = list(forecast_values) + [last_val] * (horizon - len(forecast_values))
-                        return forecast_values[:horizon]
+                        return [float(x) for x in forecast_values[:horizon]]
                     else:
                         # Fallback to naive forecast
                         return [float(train_series.iloc[-1])] * horizon
