@@ -100,5 +100,66 @@ Edit `config/git_gateway_config.py` to customize:
 - File patterns to monitor
 - Commit message templates
 - Safety constraints
+
+## 🔮 Advanced Prediction Models
+
+### SAMIRA (State-space Adaptive Multi-variate Integrated Regression Analysis)
+
+CrystalBall includes the sophisticated SAMIRA model for enterprise-grade time series forecasting:
+
+**Features:**
+- **State-space representation** with Kalman filtering for optimal estimation
+- **Adaptive learning** with forgetting factors for non-stationary data
+- **Multivariate support** with time-varying regression coefficients
+- **Uncertainty quantification** with 95% confidence intervals
+- **Component decomposition** (trend, seasonal, exogenous effects)
+
+**Usage:**
+```python
+from src.models.model_samira import fit_samira_model
+
+# Fit SAMIRA model
+result = fit_samira_model(
+    series=your_timeseries,
+    test_size=12,
+    exog=exogenous_variables,  # Optional
+    trend_components=2,        # Level + slope
+    seasonal_period=12,        # Auto-detected if None
+    adaptation_rate=0.95       # Higher = more adaptive
+)
+
+# Access results
+forecast = result['forecast']
+components = result['components']
+confidence_intervals = result['confidence_intervals']
+```
+
+**Specialized Visualizations:**
+```python
+from src.visualization.samira_plots import create_samira_report
+
+# Generate comprehensive SAMIRA report
+plots = create_samira_report(
+    result, 
+    original_series, 
+    output_dir="results/",
+    series_name="unemployment"
+)
+```
+
+**Model Capabilities:**
+- ✅ **Structural breaks** - Adapts to regime changes
+- ✅ **Time-varying coefficients** - Captures evolving relationships  
+- ✅ **Multiple seasonalities** - Annual, quarterly, weekly patterns
+- ✅ **Robust estimation** - Handles missing data and outliers
+- ✅ **Real-time learning** - Updates parameters as new data arrives
+
+### Configuration
+
+Edit `config/git_gateway_config.py` to customize:
+- Push frequency and rate limits
+- File patterns to monitor
+- Commit message templates
+- Safety constraints
 \n+## Interactive Dashboard
 \n+Run the Streamlit dashboard after an analysis run to explore results:\n\n1. Ensure dependencies are installed in your venv:\n   - `pip install -r requirements.txt`\n2. Launch the dashboard:\n   - `python -m src.run_dashboard`\n3. The app will open in your browser with:\n   - Per-series model rankings (table + Plotly chart)\n   - Forecast adherence report image per series\n   - Forecast plot gallery\n   - Global leaderboard (CSV + Plotly bar)\n\nTip: If you prefer, you can also run directly:\n   - `streamlit run src/dashboard.py`

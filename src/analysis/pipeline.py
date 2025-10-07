@@ -202,6 +202,20 @@ def analyze_file(path: str) -> Dict:
                     df_rank2.to_csv(rankings_csv, index=False)
                 except Exception:
                     logger.exception("Failed to merge CV metrics into rankings for %s", safe_base)
+            # export accuracy-based weights and weighting matrix
+            try:
+                if cv_metrics:
+                    wdf = evaluation.accuracy_to_weights(cv_metrics, method="inv_rmse")
+                    weights_csv = os.path.join(cfg.paths.processed_dir, f"{safe_base}_weights.csv")
+                    wdf.to_csv(weights_csv, index=False)
+                    result['outputs'].append(weights_csv)
+                    wmat = evaluation.weights_to_matrix(wdf)
+                    if not wmat.empty:
+                        wmat_csv = os.path.join(cfg.paths.processed_dir, f"{safe_base}_weights_matrix.csv")
+                        wmat.to_csv(wmat_csv)
+                        result['outputs'].append(wmat_csv)
+            except Exception:
+                logger.exception("Failed to compute/export accuracy-based weights for %s", safe_base)
             # ensemble using cv_rmse weights on available test forecasts
             try:
                 if cv_metrics:

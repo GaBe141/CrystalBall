@@ -1,11 +1,7 @@
-"""Analysis pipeline and diagnostics for CrystalBall."""
+"""Analysis subpackage.
 
-from .pipeline import analyze_file, analyze_all
-from .analysis import *
-from .diagnostics import *
-from .evaluation import *
-from .ensemble import *
-from .validation import *
-from .stats_robust import *
+Keep this __init__ minimal to avoid circular imports during test discovery.
+Import submodules directly (e.g., `from src.analysis import evaluation`) when needed.
+"""
 
-__all__ = ['analyze_file', 'analyze_all']
+__all__ = []

@@ -91,3 +91,77 @@ def compute_model_cv_metrics(y: pd.Series, horizon: int, n_folds: int, models_to
         except Exception:
             continue
     return out
+
+
+def accuracy_to_weights(
+    cv_metrics: Dict[str, Tuple[float, float]],
+    method: str = "inv_rmse",
+    temperature: float = 1.0,
+    epsilon: float = 1e-9,
+) -> pd.DataFrame:
+    """Convert per-model CV accuracy metrics into normalized weights.
+
+    Inputs:
+    - cv_metrics: dict model -> (cv_mae, cv_rmse)
+    - method:
+        - 'inv_rmse': w_i = 1 / (rmse_i + eps), then normalize to sum=1
+        - 'softmax_rmse': w_i = softmax(-rmse_i / temperature)
+    - temperature: softness for softmax method (>0)
+    - epsilon: small value to avoid division by zero
+
+    Output: DataFrame with columns ['model', 'rmse', 'mae', 'weight'] sorted by weight desc.
+    """
+    rows: list[dict] = []
+    for m, vals in cv_metrics.items():
+        try:
+            mae, rmse = float(vals[0]), float(vals[1])
+        except Exception:
+            mae, rmse = float("nan"), float("nan")
+        rows.append({"model": str(m), "mae": mae, "rmse": rmse})
+
+    df = pd.DataFrame(rows)
+    if df.empty:
+        return pd.DataFrame(columns=["model", "rmse", "mae", "weight"])
+
+    # sanitize
+    df["rmse"] = pd.to_numeric(df["rmse"], errors="coerce")
+    df["mae"] = pd.to_numeric(df["mae"], errors="coerce")
+
+    # compute raw weights
+    if method == "softmax_rmse":
+        t = max(1e-6, float(temperature))
+        x = -df["rmse"].to_numpy() / t
+        # stabilize softmax
+        x = x - np.nanmax(x)
+        ex = np.exp(x)
+        ex[~np.isfinite(ex)] = 0.0
+        s = np.nansum(ex)
+        w = ex / s if s > 0 else np.zeros_like(ex)
+        df["weight"] = w
+    else:
+        denom = df["rmse"].to_numpy() + float(epsilon)
+        inv = 1.0 / denom
+        inv[~np.isfinite(inv)] = 0.0
+        s = np.nansum(inv)
+        w = inv / s if s > 0 else np.zeros_like(inv)
+        df["weight"] = w
+
+    df.sort_values("weight", ascending=False, inplace=True)
+    df.reset_index(drop=True, inplace=True)
+    return df[["model", "rmse", "mae", "weight"]]
+
+
+def weights_to_matrix(weights_df: pd.DataFrame) -> pd.DataFrame:
+    """Build a diagonal weighting matrix from a weights DataFrame.
+
+    The output is a square DataFrame with models as both index and columns,
+    with diagonal entries set to the corresponding weights and zeros elsewhere.
+    """
+    if weights_df is None or weights_df.empty or "model" not in weights_df or "weight" not in weights_df:
+        return pd.DataFrame()
+    models = list(weights_df["model"].astype(str).values)
+    w = list(pd.to_numeric(weights_df["weight"], errors="coerce").fillna(0.0).values)
+    mat = np.zeros((len(models), len(models)), dtype=float)
+    for i, wi in enumerate(w):
+        mat[i, i] = float(wi)
+    return pd.DataFrame(mat, index=models, columns=models)

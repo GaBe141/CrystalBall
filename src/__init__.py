@@ -1,0 +1,8 @@
+"""Top-level convenience imports for legacy tests.
+
+This re-exports selected modules so tests using `from src import utils, pipeline` keep working.
+"""
+from .core import utils as utils  # noqa: F401
+from .analysis import pipeline as pipeline  # noqa: F401
+from .analysis import stats_robust as stats_robust  # noqa: F401
+from . import ranking as ranking  # noqa: F401

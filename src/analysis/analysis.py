@@ -14,7 +14,10 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-from . import ranking, stats_robust, utils
+# Import modules from their correct packages to avoid circular/invalid imports
+from .. import ranking
+from . import stats_robust
+from ..core import utils
 
 
 def sanitize_filename(name: str) -> str:
