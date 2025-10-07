@@ -268,8 +268,8 @@ class CPIPlotGenerator:
                 return self._fit_drift_model(self.cpi_series, test_size=test_size)
             elif hasattr(advanced_models, f'fit_{model_name}_model'):
                 model_func = getattr(advanced_models, f'fit_{model_name}_model')
-                result: dict[str, Any] = model_func(self.cpi_series, test_size=test_size, **kwargs)
-                return result
+                advanced_result: dict[str, Any] = model_func(self.cpi_series, test_size=test_size, **kwargs)
+                return advanced_result
             else:
                 raise ValueError(f"Model implementation for '{model_name}' not found")
                     
@@ -402,6 +402,9 @@ class CPIPlotGenerator:
         if self.cpi_series is None:
             self.load_cpi_data()
         
+        # Ensure we have data after loading
+        assert self.cpi_series is not None, "Failed to load CPI data"
+        
         # Fit the model
         result = self.fit_model(model_name, test_size=test_size, **kwargs)
         
@@ -457,8 +460,8 @@ class CPIPlotGenerator:
         ax.grid(True, alpha=0.3)
         
         # Format x-axis dates
-        ax.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m'))
-        ax.xaxis.set_major_locator(mdates.YearLocator())
+        ax.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m'))  # type: ignore[no-untyped-call]
+        ax.xaxis.set_major_locator(mdates.YearLocator())  # type: ignore[no-untyped-call]
         plt.setp(ax.xaxis.get_majorticklabels(), rotation=45)
         
         # Add metrics text if available
@@ -504,6 +507,9 @@ class CPIPlotGenerator:
         """
         if self.cpi_series is None:
             self.load_cpi_data()
+        
+        # Ensure we have data after loading
+        assert self.cpi_series is not None, "Failed to load CPI data"
         
         # Fit all models
         results = {}
@@ -558,8 +564,8 @@ class CPIPlotGenerator:
         ax1.grid(True, alpha=0.3)
         
         # Format x-axis dates
-        ax1.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m'))
-        ax1.xaxis.set_major_locator(mdates.YearLocator())
+        ax1.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m'))  # type: ignore[no-untyped-call]
+        ax1.xaxis.set_major_locator(mdates.YearLocator())  # type: ignore[no-untyped-call]
         plt.setp(ax1.xaxis.get_majorticklabels(), rotation=45)
         
         # Metrics table
@@ -725,6 +731,9 @@ class CPIPlotGenerator:
         if self.cpi_series is None:
             self.load_cpi_data()
         
+        # Ensure we have data after loading
+        assert self.cpi_series is not None, "Failed to load CPI data"
+        
         html_content = f"""
         <!DOCTYPE html>
         <html>
@@ -832,6 +841,9 @@ class CPIPlotGenerator:
         if self.cpi_series is None:
             print("📊 Loading CPI data...")
             self.load_cpi_data()
+        
+        # Ensure we have data after loading
+        assert self.cpi_series is not None, "Failed to load CPI data"
         
         print(f"✅ Loaded {len(self.cpi_series)} CPI observations")
         print(f"📅 Period: {self.cpi_series.index[0].strftime('%Y-%m')} to {self.cpi_series.index[-1].strftime('%Y-%m')}")
