@@ -49,7 +49,6 @@ class CPIPlotGenerator:
         self.output_dir = output_dir
         self.data: pd.DataFrame | None = None
         self.cpi_series: pd.Series | None = None
-        self.cpi_series: pd.Series | None = None
         self.available_models = self._get_available_models()
         
         # Create output directory if it doesn't exist
