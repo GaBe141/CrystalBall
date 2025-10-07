@@ -1,8 +1,27 @@
 # CrystalBall Directory Structure
 
 ## 📁 Organized Code Structure
-
 ```
+src/
+├── core/                      # Core utilities and configuration
+│   ├── __init__.py
+│   ├── config.py             # Configuration management
+│   ├── utils.py              # Core utility functions
+│   ├── logutil.py            # Logging utilities
+│   └── schemas.py            # Data schemas and types
+│
+├── analysis/                  # Analysis pipeline and algorithms
+│   ├── __init__.py
+│   ├── pipeline.py           # Main analysis pipeline
+│   ├── analysis.py           # Core analysis functions
+│   ├── diagnostics.py        # Diagnostic utilities
+│   ├── evaluation.py         # Model evaluation
+│   ├── ensemble.py           # Ensemble methods
+# CrystalBall Directory Structure
+
+## 📁 Organized Code Structure
+
+```text
 src/
 ├── core/                      # Core utilities and configuration
 │   ├── __init__.py
@@ -77,20 +96,23 @@ data/                          # Data directories
 
 ## 🎯 Benefits of New Structure
 
-### **Logical Grouping**
-- **Core**: Essential utilities used across the project
-- **Analysis**: All analysis-related functionality in one place
-- **Models**: Clean separation of ML models and algorithms  
-- **Visualization**: Dedicated space for plotting code
-- **Automation**: Integration and automation tools
+### Logical Grouping
 
-### **Clear Dependencies** 
+- Core: Essential utilities used across the project
+- Analysis: All analysis-related functionality in one place
+- Models: Clean separation of ML models and algorithms
+- Visualization: Dedicated space for plotting code
+- Automation: Integration and automation tools
+
+### Clear Dependencies
+
 - Core utilities can be imported by any module
 - Analysis modules work together cohesively
 - Models are self-contained and reusable
 - Visualization is separate from business logic
 
-### **Scalability**
+### Scalability
+
 - Easy to add new models in `models/`
 - Analysis pipeline components in logical location
 - Automation tools centralized
@@ -100,18 +122,18 @@ data/                          # Data directories
 
 ```python
 # Core utilities (available everywhere)
-from src.core import load_config, get_logger
+from src.core.config import load_config
+from src.core.logutil import get_logger
 from src.core.utils import load_dataset
 
 # Analysis pipeline
-from src.analysis import analyze_file, analyze_all
-from src.analysis.pipeline import analyze_file
+from src.analysis.pipeline import analyze_file, analyze_all
 
 # Models
 from src.models.base import BaseModel
-from src.models import model_registry
+from src import model_registry  # if exposed in src/__init__.py
 
-# Visualization  
+# Visualization
 from src.visualization.visualize import create_timeseries_plot
 
 # Automation
