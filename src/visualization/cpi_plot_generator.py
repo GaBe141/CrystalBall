@@ -7,7 +7,6 @@ for CPI data visualization and comparison.
 
 import os
 import warnings
-from typing import Optional
 
 import matplotlib.dates as mdates
 import matplotlib.pyplot as plt
@@ -32,7 +31,7 @@ class CPIPlotGenerator:
     
     def __init__(
         self, 
-        data_path: Optional[str] = None, 
+        data_path: str | None = None, 
         output_dir: str = "data/processed/visualizations"
     ):
         """
@@ -44,8 +43,8 @@ class CPIPlotGenerator:
         """
         self.data_path = data_path
         self.output_dir = output_dir
-        self.data = None
-        self.cpi_series = None
+        self.data: pd.DataFrame | None = None
+        self.cpi_series: pd.Series | None = None
         self.available_models = self._get_available_models()
         
         # Create output directory if it doesn't exist
@@ -69,7 +68,7 @@ class CPIPlotGenerator:
             'drift': 'Drift - Linear Trend Extrapolation'
         }
     
-    def load_cpi_data(self, data_path: Optional[str] = None) -> pd.Series:
+    def load_cpi_data(self, data_path: str | None = None) -> pd.Series:
         """
         Load CPI data from file or auto-detect from raw data directory.
         
@@ -84,72 +83,113 @@ class CPIPlotGenerator:
         
         # Try to auto-detect CPI data if no path provided
         if not self.data_path:
-            raw_data_dir = "data/raw"
-            cpi_files = [
-                "consumerpriceinflationdetailedreferencetables.xlsx",
-                "series-041025.csv",
-                "average_csv_2025-3.csv"
-            ]
-            
-            for filename in cpi_files:
-                potential_path = os.path.join(raw_data_dir, filename)
-                if os.path.exists(potential_path):
-                    self.data_path = potential_path
-                    logger.info(f"Auto-detected CPI data file: {filename}")
-                    break
+            self.data_path = self._auto_detect_cpi_file()
         
         if not self.data_path or not os.path.exists(self.data_path):
-            # Create synthetic CPI data for demonstration
-            logger.warning("No CPI data file found. Creating synthetic CPI data for demonstration.")
             return self._create_synthetic_cpi_data()
         
         try:
-            # Load data based on file extension
-            if self.data_path.endswith('.xlsx'):
-                self.data = pd.read_excel(self.data_path, sheet_name=0)
-            elif self.data_path.endswith('.csv'):
-                self.data = pd.read_csv(self.data_path)
-            else:
-                raise ValueError(f"Unsupported file format: {self.data_path}")
-            
-            # Clean and prepare data
-            self.data = utils.clean_df(self.data)
-            
-            # Detect CPI column
-            cpi_col = utils.detect_cpi_column(self.data)
-            if not cpi_col:
-                # Try to find any numeric column that could be CPI
-                numeric_cols = self.data.select_dtypes(include=[np.number]).columns.tolist()
-                if numeric_cols:
-                    cpi_col = numeric_cols[0]
-                    logger.warning(f"No CPI column detected. Using first numeric column: {cpi_col}")
-                else:
-                    raise ValueError("No suitable CPI column found in the data")
-            
-            # Extract time series
-            time_col = utils.detect_time_column(self.data)
-            if time_col:
-                self.data[time_col] = pd.to_datetime(self.data[time_col])
-                self.cpi_series = pd.Series(
-                    self.data[cpi_col].values,
-                    index=self.data[time_col],
-                    name='CPI'
-                ).dropna().sort_index()
-            else:
-                # Use index as time if no time column found
-                self.cpi_series = pd.Series(
-                    self.data[cpi_col].values,
-                    index=pd.date_range(start='2010-01-01', periods=len(self.data), freq='M'),
-                    name='CPI'
-                ).dropna()
-            
-            logger.info(f"Loaded CPI data: {len(self.cpi_series)} observations from {self.cpi_series.index[0]} to {self.cpi_series.index[-1]}")
-            return self.cpi_series
-            
+            return self._load_and_process_data()
         except Exception as e:
             logger.error(f"Error loading CPI data: {e}")
             logger.info("Creating synthetic CPI data for demonstration.")
             return self._create_synthetic_cpi_data()
+    
+    def _auto_detect_cpi_file(self) -> str | None:
+        """Auto-detect CPI data file from raw data directory."""
+        raw_data_dir = "data/raw"
+        cpi_files = [
+            "consumerpriceinflationdetailedreferencetables.xlsx",
+            "series-041025.csv",
+            "average_csv_2025-3.csv"
+        ]
+        
+        for filename in cpi_files:
+            potential_path = os.path.join(raw_data_dir, filename)
+            if os.path.exists(potential_path):
+                logger.info(f"Auto-detected CPI data file: {filename}")
+                return potential_path
+        
+        logger.warning("No CPI data file found. Creating synthetic CPI data for demonstration.")
+        return None
+    
+    def _load_and_process_data(self) -> pd.Series:
+        """Load and process the CPI data file."""
+        if not self.data_path:
+            raise ValueError("No data path specified")
+            
+        # Load data based on file extension
+        if self.data_path.endswith('.xlsx'):
+            self.data = pd.read_excel(self.data_path, sheet_name=0)
+        elif self.data_path.endswith('.csv'):
+            self.data = pd.read_csv(self.data_path)
+        else:
+            raise ValueError(f"Unsupported file format: {self.data_path}")
+        
+        # Clean and prepare data
+        self.data = utils.clean_df(self.data)
+        
+        # Extract CPI series
+        self.cpi_series = self._extract_cpi_series()
+        
+        logger.info(
+            f"Loaded CPI data: {len(self.cpi_series)} observations "
+            f"from {self.cpi_series.index[0]} to {self.cpi_series.index[-1]}"
+        )
+        return self.cpi_series
+    
+    def _extract_cpi_series(self) -> pd.Series:
+        """Extract CPI time series from the loaded data."""
+        if self.data is None:
+            raise ValueError("No data loaded")
+            
+        # Detect CPI column
+        cpi_col = utils.detect_cpi_column(self.data)
+        if not cpi_col:
+            cpi_col = self._find_fallback_numeric_column()
+        
+        # Extract time series
+        time_col = utils.detect_time_column(self.data)
+        if time_col:
+            return self._create_time_indexed_series(cpi_col, time_col)
+        else:
+            return self._create_default_indexed_series(cpi_col)
+    
+    def _find_fallback_numeric_column(self) -> str:
+        """Find a fallback numeric column if no CPI column is detected."""
+        if self.data is None:
+            raise ValueError("No data loaded")
+            
+        numeric_cols = self.data.select_dtypes(include=[np.number]).columns.tolist()
+        if numeric_cols:
+            cpi_col = numeric_cols[0]
+            logger.warning(f"No CPI column detected. Using first numeric column: {cpi_col}")
+            return cpi_col
+        else:
+            raise ValueError("No suitable CPI column found in the data")
+    
+    def _create_time_indexed_series(self, cpi_col: str, time_col: str) -> pd.Series:
+        """Create time-indexed CPI series."""
+        if self.data is None:
+            raise ValueError("No data loaded")
+            
+        self.data[time_col] = pd.to_datetime(self.data[time_col])
+        return pd.Series(
+            self.data[cpi_col].values,
+            index=self.data[time_col],
+            name='CPI'
+        ).dropna().sort_index()
+    
+    def _create_default_indexed_series(self, cpi_col: str) -> pd.Series:
+        """Create default-indexed CPI series when no time column is found."""
+        if self.data is None:
+            raise ValueError("No data loaded")
+            
+        return pd.Series(
+            self.data[cpi_col].values,
+            index=pd.date_range(start='2010-01-01', periods=len(self.data), freq='M'),
+            name='CPI'
+        ).dropna()
     
     def _create_synthetic_cpi_data(self, n_periods: int = 120, start_date: str = '2015-01-01') -> pd.Series:
         """Create synthetic CPI data for demonstration purposes."""
@@ -220,7 +260,7 @@ class CPIPlotGenerator:
                 return self._fit_drift_model(self.cpi_series, test_size=test_size)
             else:
                 # Try to use from advanced models
-                from ..models import advanced_models
+                from src.models import advanced_models
                 if hasattr(advanced_models, f'fit_{model_name}_model'):
                     model_func = getattr(advanced_models, f'fit_{model_name}_model')
                     return model_func(self.cpi_series, test_size=test_size, **kwargs)
@@ -860,7 +900,7 @@ class CPIPlotGenerator:
 
 
 # Convenience function for quick usage
-def quick_cpi_forecast(model_name: str = 'arima', data_path: Optional[str] = None, 
+def quick_cpi_forecast(model_name: str = 'arima', data_path: str | None = None, 
                       show_plot: bool = True) -> plt.Figure:
     """
     Quick function to generate a CPI forecast plot with a single model.
