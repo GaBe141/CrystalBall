@@ -25,3 +25,15 @@
 *.pptx binary
 *.docx binary
 *.zip binary
+
+# Performance optimizations
+*.min.js -diff
+*.min.css -diff
+*.lock -diff
+
+# Large data files (if using Git LFS)
+*.pkl filter=lfs diff=lfs merge=lfs -text
+*.pickle filter=lfs diff=lfs merge=lfs -text
+*.joblib filter=lfs diff=lfs merge=lfs -text
+*.h5 filter=lfs diff=lfs merge=lfs -text
+*.hdf5 filter=lfs diff=lfs merge=lfs -text

@@ -1,3 +1,4 @@
+# ruff: noqa: E501
 """
 CPI Forecasting Plot Generator
 
@@ -7,7 +8,7 @@ for CPI data visualization and comparison.
 
 import os
 import warnings
-from typing import Any
+from typing import Any, cast
 
 import matplotlib.dates as mdates
 import matplotlib.figure
@@ -44,6 +45,25 @@ class CPIPlotGenerator:
             data_path: Path to CPI data file. If None, will try to auto-detect from raw data.
             output_dir: Directory to save generated plots.
         """
+        # SECURE PATH HANDLING
+        if data_path:
+            # Validate and normalize the path
+            data_path = os.path.normpath(data_path)
+            # Allow paths within data/ directory or current working directory
+            allowed_prefixes = ('data/', './data/', 'data\\', '.\\data\\')
+            if not any(data_path.startswith(prefix) for prefix in allowed_prefixes):
+                cwd = os.getcwd()
+                if not data_path.startswith(cwd):
+                    raise ValueError(
+                        "Data path must be within allowed directories "
+                        "(data/ or current working directory)"
+                    )
+        
+        # Secure output directory
+        output_dir = os.path.normpath(output_dir)
+        if '..' in output_dir or output_dir.startswith(('/', '\\')):
+            raise ValueError("Invalid output directory path")
+            
         self.data_path = data_path
         self.output_dir = output_dir
         self.data: pd.DataFrame | None = None
@@ -238,27 +258,35 @@ class CPIPlotGenerator:
             Dictionary containing model results
         """
         if self.cpi_series is None:
-            raise ValueError("CPI data not loaded. Call load_cpi_data() first.")
+            raise RuntimeError("CPI data not loaded. Call load_cpi_data() first.")
         
-        if model_name not in self.available_models:
-            available_models = list(self.available_models.keys())
-            msg = f"Model '{model_name}' not available. Choose from: {available_models}"
-            raise ValueError(msg)
+        # Validate test_size
+        if test_size < 0:
+            raise ValueError("test_size must be non-negative")
+        if test_size >= len(self.cpi_series):
+            raise ValueError(
+                f"test_size ({test_size}) must be less than data length ({len(self.cpi_series)})"
+            )
         
         logger.info(f"Fitting {model_name} model...")
-        
         try:
-            return self._dispatch_model_fitting(model_name, test_size, **kwargs)
-        except Exception as e:
+            result = self._dispatch_model_fitting(model_name, test_size, **kwargs)
+            return self._validate_model_result(result, model_name)
+        except Exception as e:  # noqa: BLE001 - broad to surface model errors
             logger.error(f"Error fitting {model_name} model: {e}")
-            return {'error': str(e), 'model': None, 'forecast': None}
+            return {'error': str(e), 'model': model_name, 'forecast': None}
     
     def _dispatch_model_fitting(
         self, model_name: str, test_size: int, **kwargs: Any
     ) -> dict[str, Any]:
         """Dispatch model fitting based on model name."""
-        # Standard model mappings
-        standard_models = {
+        # ADD INPUT VALIDATION
+        allowed_models = set(self.available_models.keys())
+        if model_name not in allowed_models:
+            raise ValueError(f"Model '{model_name}' not in allowed models: {allowed_models}")
+        
+        # Standard model mappings with proper type annotations
+        standard_models: dict[str, Any] = {
             'arima': lambda: utils.fit_arima_series(
                 self.cpi_series, test_size=test_size, **kwargs
             ),
@@ -283,14 +311,54 @@ class CPIPlotGenerator:
         
         # Check standard models first
         if model_name in standard_models:
-            return standard_models[model_name]()
+            return cast(dict[str, Any], standard_models[model_name]())
         
-        # Check advanced models
-        if hasattr(advanced_models, f'fit_{model_name}_model'):
-            model_func = getattr(advanced_models, f'fit_{model_name}_model')
-            return model_func(self.cpi_series, test_size=test_size, **kwargs)
+        # SECURE: Replace dynamic attribute access with explicit mapping
+        advanced_model_mapping: dict[str, Any] = {
+            'neural_prophet': getattr(advanced_models, 'fit_neural_prophet_model', None),
+            'ses': getattr(advanced_models, 'fit_ses_model', None),
+            'holt': getattr(advanced_models, 'fit_holt_model', None),
+            'tbats': getattr(advanced_models, 'fit_tbats_model', None),
+            'darts_arima': getattr(advanced_models, 'fit_darts_arima_model', None),
+            'darts_ets': getattr(advanced_models, 'fit_darts_ets_model', None),
+        }
+        
+        if model_name in advanced_model_mapping:
+            model_func = advanced_model_mapping[model_name]
+            if model_func is not None:
+                return cast(
+                    dict[str, Any],
+                    model_func(self.cpi_series, test_size=test_size, **kwargs),
+                )
+            else:
+                raise ValueError(
+                    f"Model function for '{model_name}' not implemented in advanced_models"
+                )
         
         raise ValueError(f"Model implementation for '{model_name}' not found")
+    
+    def _validate_model_result(self, result: dict[str, Any], model_name: str) -> dict[str, Any]:
+        """Validate and sanitize model results."""
+        if result.get('error'):
+            logger.error(f"Model {model_name} failed: {result['error']}")
+            return result
+        
+        # Validate forecast
+        forecast = result.get('forecast')
+        if forecast is not None and not np.all(np.isfinite(forecast.values)):
+            logger.warning(f"Model {model_name} produced non-finite forecast values")
+            # Replace with interpolated values or fallback
+            forecast = forecast.interpolate().fillna(method='bfill').fillna(method='ffill')
+            result['forecast'] = forecast
+        
+        # Validate metrics
+        for metric in ['mae', 'rmse', 'mape']:
+            value = result.get(metric)
+            if value is not None and (not np.isfinite(value) or value < 0):
+                logger.warning(f"Invalid {metric} value for {model_name}: {value}")
+                result[metric] = None
+        
+        return result
     
     def _fit_naive_model(self, series: pd.Series, test_size: int = 12) -> dict[str, Any]:
         """Fit naive (last value) model."""
@@ -398,7 +466,7 @@ class CPIPlotGenerator:
             'rmse': None
         }
     
-    def generate_single_model_plot(self, model_name: str, test_size: int = 12, 
+    def generate_single_model_plot(self, model_name: str, test_size: int = 12,  # noqa: C901 - complexity acceptable for plotting
                                  figsize: tuple[int, int] = (12, 8),
                                  save_plot: bool = True, **kwargs: Any) -> matplotlib.figure.Figure:
         """
@@ -617,7 +685,7 @@ class CPIPlotGenerator:
         
         return fig
     
-    def generate_model_ranking_plot(self, model_names: list[str], test_size: int = 12,
+    def generate_model_ranking_plot(self, model_names: list[str], test_size: int = 12,  # noqa: C901 - complexity acceptable for plotting
                                   cv_folds: int = 3, figsize: tuple[int, int] = (12, 8),
                                   save_plot: bool = True) -> matplotlib.figure.Figure:
         """
@@ -847,7 +915,7 @@ class CPIPlotGenerator:
             print(f"{i:2d}. {model_name.upper():<20} - {description}")
         print("=" * 60)
     
-    def run_interactive_mode(self) -> None:
+    def run_interactive_mode(self) -> None:  # noqa: C901, PLR0912, PLR0915 - interactive CLI is verbose by design
         """Run the plot generator in interactive mode."""
         print("\n🔮 Welcome to the CPI Forecasting Plot Generator!")
         print("=" * 60)
