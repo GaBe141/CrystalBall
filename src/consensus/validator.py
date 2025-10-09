@@ -3,10 +3,14 @@ Consensus Validator - Validation framework for consensus performance
 """
 
 from dataclasses import dataclass
+from typing import Any, TYPE_CHECKING
 
 import numpy as np
 
 from ..logutil import get_logger
+
+if TYPE_CHECKING:
+    from .engine import ConsensusEngine
 
 logger = get_logger("crystalball.consensus.validator")
 
@@ -27,11 +31,13 @@ class ValidationResult:
 class ConsensusValidator:
     """Validates consensus performance using various metrics."""
     
-    def __init__(self, engine) -> None:
+    def __init__(self, engine: 'ConsensusEngine') -> None:
         self.engine = engine
-        self.validation_history = []
+        self.validation_history: list[dict[str, Any]] = []
     
-    def cross_validate_consensus(self, test_data, methods=None) -> ValidationResult:
+    def cross_validate_consensus(
+        self, test_data: list[dict[str, Any]], methods: list[str] | None = None
+    ) -> ValidationResult:
         """Cross-validate consensus using historical data."""
         methods = methods or ['weighted_average', 'median', 'robust_mean']
         
@@ -77,7 +83,13 @@ class ConsensusValidator:
             all_predictions, all_actuals, method_results, test_data
         )
     
-    def _compute_validation_metrics(self, predictions, actuals, method_results, test_data):
+    def _compute_validation_metrics(
+        self, 
+        predictions: list[str], 
+        actuals: list[str], 
+        method_results: dict[str, Any], 
+        test_data: list[dict[str, Any]]
+    ) -> ValidationResult:
         """Compute comprehensive validation metrics."""
         
         # Basic accuracy
@@ -106,7 +118,7 @@ class ConsensusValidator:
         self.validation_history.append(result)
         return result
     
-    def _compute_top_k_accuracy(self, test_data):
+    def _compute_top_k_accuracy(self, test_data: list[dict[str, Any]]) -> dict[str, float]:
         """Compute top-k accuracy for different values of k."""
         top_k_results = {}
         
@@ -135,7 +147,7 @@ class ConsensusValidator:
             
         return top_k_results
     
-    def _compute_rank_correlation(self, test_data):
+    def _compute_rank_correlation(self, test_data: list[dict[str, Any]]) -> dict[str, float]:
         """Compute rank correlation between consensus and actual rankings."""
         correlations = []
         
@@ -169,7 +181,7 @@ class ConsensusValidator:
         
         return float(np.mean(correlations)) if correlations else 0.0
     
-    def _compute_confidence_calibration(self, test_data):
+    def _compute_confidence_calibration(self, test_data: list[dict[str, Any]]) -> dict[str, Any]:
         """Compute how well consensus confidence matches actual accuracy."""
         confidence_bins = np.linspace(0, 1, 11)
         bin_accuracies = []

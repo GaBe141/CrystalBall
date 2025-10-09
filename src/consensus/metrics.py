@@ -11,6 +11,9 @@ from ..logutil import get_logger
 
 logger = get_logger("crystalball.consensus.metrics")
 
+# Constants
+MIN_TREND_VALUES = 2
+
 
 @dataclass
 class ConsensusMetrics:
@@ -80,7 +83,9 @@ def compute_consensus_metrics(
     )
 
 
-def compute_accuracy_metrics(consensus_history, actual_results):
+def compute_accuracy_metrics(
+    consensus_history: list[dict[str, Any]], actual_results: dict[str, Any]
+) -> tuple[float, float, float, float]:
     """Compute accuracy, precision, recall, and F1 score."""
     
     predictions = []
@@ -98,7 +103,7 @@ def compute_accuracy_metrics(consensus_history, actual_results):
         return 0.0, 0.0, 0.0, 0.0
     
     # Binary classification metrics (correct vs incorrect)
-    correct = sum(p == a for p, a in zip(predictions, actuals))
+    correct = sum(p == a for p, a in zip(predictions, actuals, strict=True))
     total = len(predictions)
     
     accuracy = correct / total
@@ -109,9 +114,9 @@ def compute_accuracy_metrics(consensus_history, actual_results):
     recalls = []
     
     for model in unique_models:
-        tp = sum(p == model and a == model for p, a in zip(predictions, actuals))
-        fp = sum(p == model and a != model for p, a in zip(predictions, actuals))
-        fn = sum(p != model and a == model for p, a in zip(predictions, actuals))
+        tp = sum(p == model and a == model for p, a in zip(predictions, actuals, strict=True))
+        fp = sum(p == model and a != model for p, a in zip(predictions, actuals, strict=True))
+        fn = sum(p != model and a == model for p, a in zip(predictions, actuals, strict=True))
         
         precision = tp / (tp + fp) if (tp + fp) > 0 else 0.0
         recall = tp / (tp + fn) if (tp + fn) > 0 else 0.0
@@ -127,7 +132,9 @@ def compute_accuracy_metrics(consensus_history, actual_results):
     return accuracy, avg_precision, avg_recall, f1
 
 
-def analyze_consensus_trends(consensus_history, window_size=10):
+def analyze_consensus_trends(
+    consensus_history: list[dict[str, Any]], window_size: int = 10
+) -> dict[str, Any]:
     """Analyze trends in consensus performance over time."""
     
     if len(consensus_history) < window_size:
@@ -152,7 +159,7 @@ def analyze_consensus_trends(consensus_history, window_size=10):
             model_counts.append(len(scores))
     
     # Compute rolling statistics
-    def rolling_mean(data, window):
+    def rolling_mean(data: list[float], window: int) -> list[float]:
         return [np.mean(data[max(0, i-window+1):i+1]) for i in range(len(data))]
     
     confidence_trend = rolling_mean(confidences, window_size)
