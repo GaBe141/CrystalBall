@@ -2,10 +2,11 @@
 Test script for Enhanced Consensus Framework
 """
 
-import sys
 import os
-import pandas as pd
+import sys
 from pathlib import Path
+
+import pandas as pd
 
 # Add the src directory to the Python path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
@@ -15,7 +16,7 @@ from src.consensus.metrics import compute_consensus_metrics
 from src.llm_consensus import HeuristicProvider
 
 
-def test_consensus_engine():
+def test_consensus_engine() -> bool:
     """Test basic consensus engine functionality."""
     print("🧪 Testing Consensus Engine...")
     
@@ -53,7 +54,7 @@ def test_consensus_engine():
         return False
 
 
-def test_enhanced_runner():
+def test_enhanced_runner() -> bool:
     """Test enhanced consensus runner integration."""
     print("\n🧪 Testing Enhanced Consensus Runner...")
     
@@ -99,7 +100,7 @@ def test_enhanced_runner():
         return False
 
 
-def test_validator():
+def test_validator() -> bool:
     """Test consensus validator."""
     print("\n🧪 Testing Consensus Validator...")
     
@@ -127,7 +128,7 @@ def test_validator():
         # Run validation
         validation_result = validator.cross_validate_consensus(test_data)
         
-        print(f"✅ Validation completed")
+        print("✅ Validation completed")
         print(f"📊 Accuracy: {validation_result.accuracy:.3f}")
         print(f"🎯 Method performance: {validation_result.method_performance}")
         
@@ -142,7 +143,7 @@ def test_validator():
         return False
 
 
-def test_metrics():
+def test_metrics() -> bool:
     """Test metrics computation."""
     print("\n🧪 Testing Consensus Metrics...")
     
@@ -170,7 +171,7 @@ def test_metrics():
         # Compute metrics
         metrics = compute_consensus_metrics(consensus_history)
         
-        print(f"✅ Computed metrics")
+        print("✅ Computed metrics")
         print(f"🎯 Confidence score: {metrics.confidence_score:.3f}")
         print(f"🌈 Diversity score: {metrics.diversity_score:.3f}")
         print(f"📊 Overall score: {metrics.overall_score():.3f}")
@@ -182,7 +183,7 @@ def test_metrics():
         return False
 
 
-def main():
+def main() -> bool:
     """Run all tests."""
     print("🚀 Starting Enhanced Consensus Framework Tests")
     print("=" * 60)
@@ -206,7 +207,7 @@ def main():
     print("\n" + "=" * 60)
     print("📋 Test Results Summary:")
     
-    for i, (test, result) in enumerate(zip(tests, results)):
+    for i, (test, result) in enumerate(zip(tests, results, strict=True)):
         status = "✅ PASS" if result else "❌ FAIL"
         print(f"{i+1}. {test.__name__}: {status}")
     

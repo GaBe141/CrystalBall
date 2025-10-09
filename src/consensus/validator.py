@@ -33,7 +33,7 @@ class ConsensusValidator:
     
     def __init__(self, engine: 'ConsensusEngine') -> None:
         self.engine = engine
-        self.validation_history: list[dict[str, Any]] = []
+        self.validation_history: list[ValidationResult] = []
     
     def cross_validate_consensus(
         self, test_data: list[dict[str, Any]], methods: list[str] | None = None
@@ -118,7 +118,7 @@ class ConsensusValidator:
         self.validation_history.append(result)
         return result
     
-    def _compute_top_k_accuracy(self, test_data: list[dict[str, Any]]) -> dict[str, float]:
+    def _compute_top_k_accuracy(self, test_data: list[dict[str, Any]]) -> dict[int, float]:
         """Compute top-k accuracy for different values of k."""
         top_k_results = {}
         
@@ -147,7 +147,7 @@ class ConsensusValidator:
             
         return top_k_results
     
-    def _compute_rank_correlation(self, test_data: list[dict[str, Any]]) -> dict[str, float]:
+    def _compute_rank_correlation(self, test_data: list[dict[str, Any]]) -> float:
         """Compute rank correlation between consensus and actual rankings."""
         correlations = []
         
@@ -181,7 +181,7 @@ class ConsensusValidator:
         
         return float(np.mean(correlations)) if correlations else 0.0
     
-    def _compute_confidence_calibration(self, test_data: list[dict[str, Any]]) -> dict[str, Any]:
+    def _compute_confidence_calibration(self, test_data: list[dict[str, Any]]) -> float:
         """Compute how well consensus confidence matches actual accuracy."""
         confidence_bins = np.linspace(0, 1, 11)
         bin_accuracies = []
@@ -227,7 +227,7 @@ class ConsensusValidator:
                 abs(acc - conf) 
                 for acc, conf in zip(bin_accuracies, bin_confidences, strict=True)
             ])
-            return 1.0 - ece
+            return float(1.0 - ece)
         
         return 0.0
     

@@ -2,11 +2,10 @@
 Enhanced Consensus Integration - Integrates with existing CrystalBall pipeline
 """
 
-from typing import Any
-
 import json
 import os
 from pathlib import Path
+from typing import Any
 
 import pandas as pd
 
@@ -193,7 +192,7 @@ class EnhancedConsensusRunner:
                     json.dump(detailed_results, f, indent=2)
         
         # Create comparison across methods
-        comparison_results = {
+        comparison_results: dict[str, Any] = {
             "series_name": series_name,
             "method_comparison": {}
         }

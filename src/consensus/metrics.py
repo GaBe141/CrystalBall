@@ -2,10 +2,10 @@
 Consensus Metrics - Performance metrics for consensus systems
 """
 
+from dataclasses import dataclass
 from typing import Any
 
 import numpy as np
-from dataclasses import dataclass
 
 from ..logutil import get_logger
 
@@ -127,7 +127,11 @@ def compute_accuracy_metrics(
     avg_precision = np.mean(precisions)
     avg_recall = np.mean(recalls)
     
-    f1 = (2 * avg_precision * avg_recall) / (avg_precision + avg_recall) if (avg_precision + avg_recall) > 0 else 0.0
+    # F1 Score
+    f1 = (
+        (2 * avg_precision * avg_recall) / (avg_precision + avg_recall) 
+        if (avg_precision + avg_recall) > 0 else 0.0
+    )
     
     return accuracy, avg_precision, avg_recall, f1
 
@@ -159,16 +163,12 @@ def analyze_consensus_trends(
             model_counts.append(len(scores))
     
     # Compute rolling statistics
-    def rolling_mean(data: list[float], window: int) -> list[float]:
-        return [np.mean(data[max(0, i-window+1):i+1]) for i in range(len(data))]
+    def rolling_mean(data: list[float] | list[int], window: int) -> list[float]:
+        return [float(np.mean(data[max(0, i-window+1):i+1])) for i in range(len(data))]
     
-    confidence_trend = rolling_mean(confidences, window_size)
-    variance_trend = rolling_mean(variances, window_size)
-    count_trend = rolling_mean(model_counts, window_size)
-    
-    # Detect trends (positive, negative, stable)
-    def detect_trend(values):
-        if len(values) < 2:
+    # Detect trends (positive, negative, stable)  
+    def detect_trend(values: list[float] | list[int]) -> str:
+        if len(values) < MIN_TREND_VALUES:
             return "stable"
         
         recent = values[-window_size//2:]
